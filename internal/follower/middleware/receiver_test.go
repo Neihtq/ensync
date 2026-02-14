@@ -44,7 +44,7 @@ func TestSubscribeAndExpose(t *testing.T) {
 	port := ":9000"
 	stop := make(chan struct{})
 	ipProvider := MockIPProvider{FakeIP: []byte{127, 0, 0, 1}}
-	server := StartMockHttpServer(t)
+	server := StartMockHTTPServer(t)
 	endpointProvider := MockEndpointProvider{server.URL}
 
 	go SubscribeAndExpose(port, stop, ipProvider, endpointProvider)

@@ -54,7 +54,7 @@ func SubscribeAndExpose(
 	fmt.Printf("IP Address: %s", localIP)
 
 	grandmasterEndpoint := endpointProvider.GetEndpoint()
-	localUDPAddr := "http://" + localIP + port
+	localUDPAddr := localIP + port
 	data := map[string]string{"url": localUDPAddr}
 	err := post(data, grandmasterEndpoint)
 	if err != nil {
