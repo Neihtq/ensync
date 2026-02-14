@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func StartMockHttpServer(t *testing.T) *httptest.Server {
+func StartMockHTTPServer(t *testing.T) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		if request.Method != "POST" {
 			t.Errorf("Expected POST request, got %s", request.Method)
@@ -21,7 +21,7 @@ func StartMockHttpServer(t *testing.T) *httptest.Server {
 }
 
 func TestPost(t *testing.T) {
-	server := StartMockHttpServer(t)
+	server := StartMockHTTPServer(t)
 	defer server.Close()
 
 	testData := map[string]string{"url": "TestUrl1:8080"}
