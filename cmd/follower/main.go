@@ -5,7 +5,9 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
+	"ensync/internal/follower/audio"
 	"ensync/internal/follower/middleware"
 )
 
@@ -20,12 +22,22 @@ func main() {
 	ipProvider := middleware.RealIPProvider{}
 	endpointProvider := middleware.SubscriptionEndpointProvider{}
 
-	go func() {
-		<-sigChan
-		fmt.Println("\nShutting down...")
-		close(stop)
-	}()
-
 	fmt.Println("Starting Application.")
-	middleware.SubscribeAndExpose(udpPort, stop, ipProvider, endpointProvider)
+	go middleware.SubscribeAndExpose(udpPort, stop, ipProvider, endpointProvider)
+
+	fmt.Println("Play audio!")
+	filePath := "./assets/test_audio.mp3"
+	audioSource, err := os.Open(filePath)
+	if err != nil {
+		panic(err)
+	}
+	defer audioSource.Close()
+	go audio.PlayAudio(audioSource)
+
+	<-sigChan
+	fmt.Println("\nShutting down...")
+	close(stop)
+
+	time.Sleep(time.Millisecond * 500)
+	fmt.Println("Exit.")
 }
