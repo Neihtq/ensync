@@ -12,7 +12,7 @@ import (
 func PlayAudio(source io.Reader) {
 	decodedMp3, err := mp3.NewDecoder(source)
 	if err != nil {
-		panic("mp3.NewDecoder faile: " + err.Error())
+		panic("mp3.NewDecoder failed: " + err.Error())
 	}
 
 	op := &oto.NewContextOptions{
