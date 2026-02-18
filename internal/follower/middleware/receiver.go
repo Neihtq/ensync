@@ -35,8 +35,13 @@ func expose(port string, stop chan struct{}) error {
 		default:
 			numBytes, remoteAddr, err := conn.ReadFromUDP(buffer)
 			if err != nil {
-				fmt.Println("Error reading:", err)
-				continue
+				select {
+				case <-stop:
+					return nil
+				default:
+					fmt.Println("Error reading:", err)
+					continue
+				}
 			}
 
 			fmt.Printf("Received %d bytes from %s: %s\n", numBytes, remoteAddr, string(buffer[:numBytes]))
