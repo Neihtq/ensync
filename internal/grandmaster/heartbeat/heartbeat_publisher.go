@@ -45,7 +45,7 @@ func SendHeartbeat(url string) {
 }
 
 func (publisher *HeartbeatPublisher) SendHeartbeatToAll() {
-	for _, url := range publisher.Subs.Urls {
+	for _, url := range publisher.Subs.HeartbeatURLs {
 		go SendHeartbeat(url)
 	}
 }

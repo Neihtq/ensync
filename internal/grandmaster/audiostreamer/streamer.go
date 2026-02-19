@@ -59,6 +59,6 @@ func (streamer *AudioStreamer) StreamAudioToAllLoop(filePath string) {
 			break
 		}
 
-		StreamAudioToAll(buffer[:n], streamer.Subs.Urls)
+		StreamAudioToAll(buffer[:n], streamer.Subs.AudioURLs)
 	}
 }

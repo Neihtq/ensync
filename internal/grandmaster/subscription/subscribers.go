@@ -12,12 +12,15 @@ import (
 const subscribersLogPrefix = "[Subscribers]"
 
 type subscribeRequest struct {
-	URL string `json:"url"`
+	Address       string `json:"address"`
+	HeartbeatPort string `json:"heartbeatPort"`
+	AudioPort     string `json:"audioPort"`
 }
 
 type Subscribers struct {
 	sync.RWMutex
-	Urls []string
+	HeartbeatURLs []string
+	AudioURLs     []string
 }
 
 func (s *Subscribers) Subscribe(writer http.ResponseWriter, request *http.Request) {
@@ -27,8 +30,14 @@ func (s *Subscribers) Subscribe(writer http.ResponseWriter, request *http.Reques
 
 	var req subscribeRequest
 	json.NewDecoder(request.Body).Decode(&req)
-	url := req.URL
-	s.Urls = append(s.Urls, url)
+	addr := req.Address
+	if addr == "" {
+		panic("Provided address is empty!")
+	}
+	heartbeatURL := addr + ":" + req.HeartbeatPort
+	audioURL := addr + ":" + req.AudioPort
+	s.HeartbeatURLs = append(s.HeartbeatURLs, heartbeatURL)
+	s.AudioURLs = append(s.AudioURLs, audioURL)
 
-	logging.Log(subscribersLogPrefix, "Subscribed: "+url)
+	logging.Log(subscribersLogPrefix, "Subscribed: "+addr)
 }
