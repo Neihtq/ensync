@@ -2,7 +2,6 @@
 package heartbeat
 
 import (
-	"fmt"
 	"log"
 	"net"
 	"time"
@@ -21,7 +20,6 @@ type HeartbeatPublisher struct {
 }
 
 func SendHeartbeat(url string) {
-	fmt.Println("Send hearbeat to " + url)
 	logging.Log(logPrefix, "Send hearbeat to "+url)
 
 	addr, err := net.ResolveUDPAddr("udp", url)
