@@ -11,7 +11,10 @@ import (
 	"ensync/internal/follower/middleware"
 )
 
-const udpPort = ":9000"
+const (
+	audioPort = ":9000"
+	udpPort   = ":9001"
+)
 
 func main() {
 	stop := make(chan struct{})
@@ -23,7 +26,7 @@ func main() {
 	endpointProvider := middleware.SubscriptionEndpointProvider{}
 
 	fmt.Println("Starting Application.")
-	go middleware.SubscribeAndExpose(udpPort, stop, ipProvider, endpointProvider)
+	go middleware.SubscribeAndExpose(udpPort, audioPort, stop, ipProvider, endpointProvider)
 
 	fmt.Println("Play audio!")
 	filePath := "./assets/test_audio.mp3"
