@@ -1,14 +1,18 @@
-// package audiostreamer implements streaming capabilities of audio data
+// Package audiostreamer implements streaming capabilities of audio data
 package audiostreamer
 
 import (
 	"log"
 	"net"
 	"os"
+	"strconv"
+	"sync"
 	"time"
 
 	"ensync/internal/grandmaster/logging"
 	"ensync/internal/grandmaster/subscription"
+
+	"github.com/gammazero/deque"
 )
 
 const (
@@ -17,7 +21,30 @@ const (
 )
 
 type AudioStreamer struct {
-	Subs *subscription.Subscribers
+	mu    sync.Mutex
+	Subs  *subscription.Subscribers
+	Queue deque.Deque[string] // List of tracks
+}
+
+func NewAudioStreamer(subs *subscription.Subscribers) *AudioStreamer {
+	return &AudioStreamer{Subs: subs}
+}
+
+func (streamer *AudioStreamer) addToQueue(filePath string) {
+	streamer.mu.Lock()
+	streamer.Queue.PushBack(filePath)
+	streamer.mu.Unlock()
+}
+
+func (streamer *AudioStreamer) StreamAudioToAllLoop() {
+	for {
+		streamer.mu.Lock()
+		if streamer.Queue.Len() > 0 {
+			filePath := streamer.Queue.PopFront()
+			streamer.mu.Unlock()
+			StreamAudioToAll(filePath, streamer.Subs.AudioURLs)
+		}
+	}
 }
 
 func streamAudioToFollower(buffer []byte, url string) {
@@ -37,13 +64,7 @@ func streamAudioToFollower(buffer []byte, url string) {
 	conn.Write(buffer)
 }
 
-func StreamAudioToAll(buffer []byte, urls []string) {
-	for _, url := range urls {
-		streamAudioToFollower(buffer, url)
-	}
-}
-
-func (streamer *AudioStreamer) StreamAudioToAllLoop(filePath string) {
+func StreamAudioToAll(filePath string, urls []string) {
 	audioSource, err := os.Open(filePath)
 	if err != nil {
 		panic(err)
@@ -56,9 +77,12 @@ func (streamer *AudioStreamer) StreamAudioToAllLoop(filePath string) {
 	for range ticker.C {
 		n, err := audioSource.Read(buffer)
 		if n == 0 || err != nil {
+			logging.Log(logPrefix, "Exiting play loop: n="+strconv.Itoa(n)+" err="+err.Error())
 			break
 		}
 
-		StreamAudioToAll(buffer[:n], streamer.Subs.AudioURLs)
+		for _, url := range urls {
+			streamAudioToFollower(buffer[:n], url)
+		}
 	}
 }

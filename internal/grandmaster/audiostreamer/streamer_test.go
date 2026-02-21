@@ -28,6 +28,6 @@ func TestStreamAutoToAllLoop(t *testing.T) {
 	}()
 
 	urls := []string{serverAddr}
-	mockAudioBuffer := []byte{1, 2, 3}
-	StreamAudioToAll(mockAudioBuffer, urls)
+	filePath := "../../../assets/test_file.mp3"
+	StreamAudioToAll(filePath, urls)
 }
