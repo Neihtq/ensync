@@ -9,18 +9,18 @@ import (
 func expose(url string, stop chan struct{}) error {
 	addr, err := net.ResolveUDPAddr("udp", url)
 	if err != nil {
-		fmt.Println("Error resolving address:\n", err)
+		fmt.Println("Error resolving address for heartbeat server:\n", err)
 		os.Exit(1)
 	}
 
 	conn, err := net.ListenUDP("udp", addr)
 	if err != nil {
-		fmt.Println("Error starting listener:\n", err)
+		fmt.Println("Error starting listener for heartbeat server:\n", err)
 		return err
 	}
 	defer conn.Close()
 
-	fmt.Printf("UDP server listening on %s\n", url)
+	fmt.Printf("Heartbeat server listening on %s\n", url)
 
 	go func() {
 		<-stop
@@ -33,7 +33,7 @@ func expose(url string, stop chan struct{}) error {
 		case <-stop:
 			return nil
 		default:
-			numBytes, remoteAddr, err := conn.ReadFromUDP(buffer)
+			_, _, err := conn.ReadFromUDP(buffer)
 			if err != nil {
 				select {
 				case <-stop:
@@ -43,8 +43,6 @@ func expose(url string, stop chan struct{}) error {
 					continue
 				}
 			}
-
-			fmt.Printf("Received %d bytes from %s: %s\n", numBytes, remoteAddr, string(buffer[:numBytes]))
 		}
 	}
 }

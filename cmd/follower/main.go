@@ -12,8 +12,8 @@ import (
 )
 
 const (
-	audioPort = ":9000"
-	udpPort   = ":9001"
+	audioPort = "9000"
+	udpPort   = "9001"
 )
 
 func main() {
@@ -28,14 +28,8 @@ func main() {
 	fmt.Println("Starting Application.")
 	go middleware.SubscribeAndExpose(udpPort, audioPort, stop, ipProvider, endpointProvider)
 
-	fmt.Println("Play audio!")
-	filePath := "./assets/test_audio.mp3"
-	audioSource, err := os.Open(filePath)
-	if err != nil {
-		panic(err)
-	}
-	defer audioSource.Close()
-	go audio.PlayAudio(audioSource)
+	fmt.Println("Launch audio server.")
+	audio.LaunchAudioServer(audioPort, ipProvider, stop)
 
 	<-sigChan
 	fmt.Println("\nShutting down...")
