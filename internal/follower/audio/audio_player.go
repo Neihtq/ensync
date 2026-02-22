@@ -5,6 +5,18 @@ import (
 	"github.com/ebitengine/oto/v3"
 )
 
+type ErrorReporter interface {
+	Err() error
+}
+
+type MockErrorReporter struct {
+	mockErr error
+}
+
+func (er *MockErrorReporter) Err() error {
+	return er.mockErr
+}
+
 func NewPlayer(audioStream *AudioStream) (*oto.Context, *oto.Player) {
 	op := &oto.NewContextOptions{
 		SampleRate:   48000,
