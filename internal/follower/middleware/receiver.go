@@ -6,21 +6,21 @@ import (
 	"os"
 )
 
-func expose(port string, stop chan struct{}) error {
-	addr, err := net.ResolveUDPAddr("udp", port)
+func expose(url string, stop chan struct{}) error {
+	addr, err := net.ResolveUDPAddr("udp", url)
 	if err != nil {
-		fmt.Println("Error resolving address:", err)
+		fmt.Println("Error resolving address for heartbeat server:\n", err)
 		os.Exit(1)
 	}
 
 	conn, err := net.ListenUDP("udp", addr)
 	if err != nil {
-		fmt.Println("Error starting listener:", err)
+		fmt.Println("Error starting listener for heartbeat server:\n", err)
 		return err
 	}
 	defer conn.Close()
 
-	fmt.Printf("UDP server listening on %s", port)
+	fmt.Printf("Heartbeat server listening on %s\n", url)
 
 	go func() {
 		<-stop
@@ -33,7 +33,7 @@ func expose(port string, stop chan struct{}) error {
 		case <-stop:
 			return nil
 		default:
-			numBytes, remoteAddr, err := conn.ReadFromUDP(buffer)
+			_, _, err := conn.ReadFromUDP(buffer)
 			if err != nil {
 				select {
 				case <-stop:
@@ -43,29 +43,27 @@ func expose(port string, stop chan struct{}) error {
 					continue
 				}
 			}
-
-			fmt.Printf("Received %d bytes from %s: %s\n", numBytes, remoteAddr, string(buffer[:numBytes]))
 		}
 	}
 }
 
 func SubscribeAndExpose(
-	port string,
+	heartbeatPort string,
+	audioPort string,
 	stop chan struct{},
 	ipProvider IPProvider,
 	endpointProvider EndpointProvider,
 ) {
-	localIP := ipProvider.GetIP().String()
-	fmt.Printf("IP Address: %s", localIP)
+	localIPAddress := ipProvider.GetIP().String()
+	fmt.Printf("IP Address: %s", localIPAddress)
 
 	grandmasterEndpoint := endpointProvider.GetEndpoint()
-	localUDPAddr := localIP + port
-	data := map[string]string{"url": localUDPAddr}
+	data := map[string]string{"address": localIPAddress, "heartbeatPort": heartbeatPort, "audioPort": audioPort}
 	err := post(data, grandmasterEndpoint)
 	if err != nil {
 		fmt.Printf("Error: %v", err)
 		os.Exit(1)
 	}
 
-	expose(port, stop)
+	expose(localIPAddress+":"+heartbeatPort, stop)
 }
