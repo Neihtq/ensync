@@ -1,21 +1,39 @@
 package audio
 
-import "sync"
+import (
+	"sync"
+
+	"github.com/gammazero/deque"
+)
+
+type AudioChunk struct {
+	data   []byte
+	playAt int64
+}
 
 type AudioStream struct {
 	mu          sync.Mutex
-	data        []byte
+	chunks      deque.Deque[AudioChunk]
+	bufferSize  int
 	isBuffering bool
 }
 
 func NewAudioStream() *AudioStream {
-	return &AudioStream{isBuffering: true}
+	return &AudioStream{isBuffering: true, bufferSize: 0}
 }
 
-func (stream *AudioStream) WriteToBuffer(data []byte) {
+func (stream *AudioStream) WriteToBuffer(data []byte, playAt int64) {
 	stream.mu.Lock()
 	defer stream.mu.Unlock()
-	stream.data = append(stream.data, data...)
+
+	tempBuffer := make([]byte, len(data))
+	numBytes := copy(tempBuffer, data)
+
+	stream.chunks.PushBack(AudioChunk{
+		data:   tempBuffer,
+		playAt: playAt,
+	})
+	stream.bufferSize += numBytes
 }
 
 func (stream *AudioStream) Read(playBuffer []byte) (int, error) {
@@ -24,19 +42,29 @@ func (stream *AudioStream) Read(playBuffer []byte) (int, error) {
 
 	const threshold = 38400
 	if stream.isBuffering {
-		if len(stream.data) < threshold {
+		if stream.bufferSize < threshold {
 			return 0, nil
 		}
 		stream.isBuffering = false
 	}
 
-	if len(stream.data) == 0 {
+	if stream.bufferSize == 0 {
 		stream.isBuffering = true
 		return 0, nil
 	}
 
-	numBytes := copy(playBuffer, stream.data)
-	stream.data = stream.data[numBytes:]
+	targetChunk := stream.chunks.Front()
+	numBytes := copy(playBuffer, targetChunk.data)
+
+	if numBytes < len(targetChunk.data) {
+		stream.chunks.Set(0, AudioChunk{
+			data:   targetChunk.data[numBytes:],
+			playAt: targetChunk.playAt,
+		})
+	} else {
+		stream.chunks.PopFront()
+	}
+	stream.bufferSize -= numBytes
 
 	return numBytes, nil
 }

@@ -3,19 +3,24 @@ package audiostreamer
 
 import (
 	"context"
+	"encoding/binary"
 	"log"
 	"net"
 	"strconv"
 	"sync"
 	"time"
 
+	"ensync/internal/grandmaster/clock"
 	"ensync/internal/grandmaster/logging"
 	"ensync/internal/grandmaster/subscription"
 
 	"github.com/gammazero/deque"
 )
 
-const logPrefix = "[AudioStreamer]"
+const (
+	logPrefix  = "[AudioStreamer]"
+	headerSize = 8
+)
 
 type AudioStreamer struct {
 	mu     sync.Mutex
@@ -26,6 +31,7 @@ type AudioStreamer struct {
 	Queue          deque.Deque[string] // List of tracks
 	Interval       time.Duration
 	SourceProvider SourceProvider
+	Clock          clock.MediaClock
 }
 
 func NewAudioStreamer(
@@ -67,8 +73,13 @@ func (streamer *AudioStreamer) StreamAudioToAll() {
 			break
 		}
 
+		envelope := make([]byte, headerSize+n)
+		playAt := streamer.Clock.StampTime(streamer.Interval)
+		binary.BigEndian.PutUint64(envelope[:headerSize], uint64(playAt))
+		copy(envelope[8:], buffer[:n])
+
 		for _, url := range streamer.Subs.AudioURLs {
-			streamAudioToFollower(buffer[:n], url)
+			streamAudioToFollower(envelope, url)
 		}
 	}
 }

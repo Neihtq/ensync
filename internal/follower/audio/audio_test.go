@@ -1,6 +1,7 @@
 package audio
 
 import (
+	"encoding/binary"
 	"fmt"
 	"net"
 	"slices"
@@ -10,46 +11,99 @@ import (
 	"ensync/internal/follower/middleware"
 )
 
-func TestAudioStream(t *testing.T) {
+func TestReadAboveThreshol(t *testing.T) {
+	// arrange
 	audioStream := NewAudioStream()
+	playAt := int64(5)
+	mockData := make([]byte, 38400)
+	audioStream.WriteToBuffer(mockData, playAt)
+	mockBuffer := make([]byte, len(mockData))
 
-	// Test Read empty buffer
-	mockBuffer := []byte{}
+	// act
 	numBytes, err := audioStream.Read(mockBuffer)
+	// assert
 	if err != nil {
 		t.Errorf("Read failed. %s", err.Error())
 	}
-	if numBytes > 0 {
-		t.Errorf("Read from empty Buffer failed: Expected %d number of bytes but received %d number of bytres", 0, numBytes)
+	if numBytes != len(mockData) {
+		t.Errorf("Read from Buffer above threshold failed: Expected %d number of bytes but received %d number of bytes", len(mockData), numBytes)
 	}
+}
 
-	// Test WriteToBuffer
+func TestReadBelowThreshold(t *testing.T) {
+	// arrange
+	audioStream := NewAudioStream()
+	playAt := int64(5)
 	mockData := []byte{1, 2, 3}
-	audioStream.WriteToBuffer(mockData)
-	if !slices.Equal(audioStream.data, mockData) {
-		t.Errorf("Writing to Buffer failed: Expected %v but received %v", mockData, audioStream.data)
-	}
+	mockBuffer := make([]byte, len(mockData))
+	audioStream.WriteToBuffer(mockData, playAt)
 
-	// Test Read below threshold
-	mockBuffer = make([]byte, len(mockData))
-	numBytes, err = audioStream.Read(mockBuffer)
+	// act
+	numBytes, err := audioStream.Read(mockBuffer)
+	// assert
 	if err != nil {
 		t.Errorf("Read failed. %s", err.Error())
 	}
 	if numBytes > 0 {
 		t.Errorf("Read from Buffer below threshold failed: Expected %d number of bytes but received %d number of bytres", len(mockData), numBytes)
 	}
+}
 
-	// Test Read above threshold
-	mockData = make([]byte, 38400)
-	audioStream.WriteToBuffer(mockData)
-	mockBuffer = make([]byte, len(mockData))
-	numBytes, err = audioStream.Read(mockBuffer)
+func TestWriteToBuffer(t *testing.T) {
+	// arrange
+	audioStream := NewAudioStream()
+	playAt := int64(5)
+	mockData := []byte{1, 2, 3}
+	audioStream.WriteToBuffer(mockData, playAt)
+
+	// act
+	chunks := audioStream.chunks
+
+	// assert
+	if chunks.Len() != 1 {
+		t.Errorf("Writing to Buffer failed: Expected number of chunks %d but is %d", 1, chunks.Len())
+	}
+	chunk := chunks.Front()
+	if !slices.Equal(chunk.data, mockData) || chunk.playAt != playAt {
+		t.Errorf("Writing to Buffer failed: Expected data %v and playAt %v but got data %v and playAt %v", mockData, playAt, chunk.data, chunk.playAt)
+	}
+}
+
+func TestReadEmptyBuffer(t *testing.T) {
+	// arrange
+	audioStream := NewAudioStream()
+	mockBuffer := []byte{}
+
+	// act
+	numBytes, err := audioStream.Read(mockBuffer)
+	// assert
 	if err != nil {
 		t.Errorf("Read failed. %s", err.Error())
 	}
-	if numBytes != len(mockData) {
-		t.Errorf("Read from Buffer above threshold failed: Expected %d number of bytes but received %d number of bytres", len(mockData), numBytes)
+	if numBytes > 0 {
+		t.Errorf("Read from empty Buffer failed: Expected %d number of bytes but received %d number of bytres", 0, numBytes)
+	}
+}
+
+func TestAudioStreamHasEmptyBufferAgain(t *testing.T) {
+	// arrange
+	audioStream := NewAudioStream()
+	playAt := int64(5)
+	mockData := make([]byte, 38400)
+	audioStream.WriteToBuffer(mockData, playAt)
+	mockBuffer := make([]byte, len(mockData))
+
+	// empty buffer and flip isBuffering flag again
+	audioStream.Read(mockBuffer)
+
+	// act
+	_, err := audioStream.Read(mockBuffer)
+	// assert
+	if err != nil {
+		t.Errorf("Read failed. %s", err.Error())
+	}
+	if !audioStream.isBuffering {
+		t.Errorf("Test Audio stream has emptieg buffer failed: Expected isBuffering to be true but was %v", audioStream.isBuffering)
 	}
 }
 
@@ -60,14 +114,18 @@ func sendTestUDPPacket(t *testing.T, url string, stop chan struct{}) {
 		t.Fatalf("Failed to dial server: %v", err)
 	}
 
-	message := []byte("test message")
-	_, err = conn.Write(message)
+	header := make([]byte, 8)
+	binary.BigEndian.PutUint64(header, uint64(time.Now().Nanosecond()))
+	payload := []byte("test message")
+	envelope := append(header, payload...)
+
+	_, err = conn.Write(envelope)
 	if err != nil {
 		t.Fatalf("Failed to send packet: %v", err)
 	}
 	conn.Close()
 
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(200 * time.Millisecond)
 	close(stop)
 }
 
@@ -80,5 +138,44 @@ func TestLaunchAudioServer(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	address := ipProvider.GetIP().String() + ":" + port
+
 	sendTestUDPPacket(t, address, stop)
+}
+
+func TestExpose(t *testing.T) {
+	// arrange
+	audioStream := NewAudioStream()
+	port := "9001"
+	ipProvider := middleware.MockIPProvider{FakeIP: []byte{127, 0, 0, 1}}
+	address := ipProvider.GetIP().String() + ":" + port
+	stop := make(chan struct{})
+
+	// act
+	go expose(address, audioStream, stop)
+	time.Sleep(100 * time.Millisecond)
+
+	sendTestUDPPacket(t, address, stop)
+
+	// assert
+	if audioStream.chunks.Len() < 1 {
+		t.Errorf("Test expose() failed: Message not written into stream.")
+	}
+}
+
+func TestCheckPlayerErrorHasNoErrors(t *testing.T) {
+	// arrange
+	mockErrorReporter := MockErrorReporter{}
+	sleepInterval := 1 * time.Nanosecond
+
+	// act
+	go checkPlayerError(&mockErrorReporter, sleepInterval)
+}
+
+func TestCheckPlayerErrorHasErrors(t *testing.T) {
+	// arrange
+	mockErrorReporter := MockErrorReporter{mockErr: fmt.Errorf("Some error")}
+	sleepInterval := 1 * time.Nanosecond
+
+	// act
+	go checkPlayerError(&mockErrorReporter, sleepInterval)
 }
