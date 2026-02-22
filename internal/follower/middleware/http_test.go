@@ -25,7 +25,7 @@ func TestPost(t *testing.T) {
 	defer server.Close()
 
 	testData := map[string]string{"url": "TestUrl1:8080"}
-	err := post(testData, server.URL)
+	err := Post(testData, server.URL)
 	if err != nil {
 		t.Errorf("Expected no error, but got %v", err)
 	}
