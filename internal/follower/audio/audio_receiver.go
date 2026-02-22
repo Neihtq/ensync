@@ -1,15 +1,16 @@
 package audio
 
 import (
+	"encoding/binary"
 	"fmt"
 	"net"
 	"os"
 	"time"
 
 	"ensync/internal/follower/middleware"
-
-	"github.com/ebitengine/oto/v3"
 )
+
+const headerSize = 8
 
 func expose(
 	url string,
@@ -35,23 +36,27 @@ func expose(
 		conn.Close()
 	}()
 
-	buffer := make([]byte, 3528)
+	buffer := make([]byte, headerSize+3528)
 	for {
 		numBytes, _, err := conn.ReadFromUDP(buffer)
 		if err != nil {
 			return
 		}
 
-		audioStream.WriteToBuffer(buffer[:numBytes])
+		timestamp := binary.BigEndian.Uint64(buffer[:headerSize])
+		playAt := int64(timestamp)
+		audio := buffer[headerSize:numBytes]
+
+		audioStream.WriteToBuffer(audio, playAt)
 	}
 }
 
-func checkPlayerError(player *oto.Player) {
+func checkPlayerError(player ErrorReporter, sleepInterval time.Duration) {
 	for {
 		if err := player.Err(); err != nil {
 			fmt.Printf("OTO PLAYER FATAL ERROR: %v\n", err)
 		}
-		time.Sleep(1 * time.Second)
+		time.Sleep(sleepInterval)
 	}
 }
 
@@ -64,5 +69,5 @@ func LaunchAudioServer(port string, ipProvider middleware.IPProvider, stop chan 
 	url := localIPAddress + ":" + port
 	go expose(url, audioStream, stop)
 
-	go checkPlayerError(player)
+	go checkPlayerError(player, 1*time.Second)
 }
