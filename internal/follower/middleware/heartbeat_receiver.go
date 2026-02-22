@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"encoding/binary"
 	"fmt"
 	"net"
 	"os"
@@ -33,7 +34,7 @@ func expose(url string, stop chan struct{}) error {
 		case <-stop:
 			return nil
 		default:
-			_, _, err := conn.ReadFromUDP(buffer)
+			numBytes, _, err := conn.ReadFromUDP(buffer)
 			if err != nil {
 				select {
 				case <-stop:
@@ -43,6 +44,8 @@ func expose(url string, stop chan struct{}) error {
 					continue
 				}
 			}
+			timestamp := binary.BigEndian.Uint64(buffer[:numBytes])
+			fmt.Println("Received heartbeat. timestamp: ", timestamp)
 		}
 	}
 }

@@ -176,7 +176,7 @@ func TestCheckPlayerErrorHasNoErrors(t *testing.T) {
 func TestCheckPlayerErrorHasErrors(t *testing.T) {
 	// arrange
 	mockErrorReporter := MockErrorReporter{mockErr: fmt.Errorf("Some error")}
-	sleepInterval := 1 * time.Nanosecond
+	sleepInterval := 1 * time.Second
 
 	// act
 	go checkPlayerError(&mockErrorReporter, sleepInterval)
