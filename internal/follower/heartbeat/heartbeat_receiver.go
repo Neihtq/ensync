@@ -73,7 +73,6 @@ func (receiver *HeartbeatReceiver) expose(stop chan struct{}) error {
 			}
 			timestamp := binary.BigEndian.Uint64(buffer[:numBytes])
 			receiver.MirrorClock.UpdateOffset(timestamp)
-			fmt.Println("Offset ", int64(receiver.MirrorClock.Offset.Nanoseconds()))
 		}
 	}
 }

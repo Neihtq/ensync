@@ -44,10 +44,11 @@ func main() {
 
 	go subscription.SubscriptionService(subscribers, subscriptionServicePort)
 
-	log("Start Heartbeat loop")
-	go publisher.HeartbeatLoop()
-
 	interval := 100 * time.Millisecond
+
+	log("Start Heartbeat loop")
+	go publisher.HeartbeatLoop(interval, stop)
+
 	log("Start AudioStreamLoop with sending interval " + interval.String())
 	go audioStreamer.StreamAudioToAllLoop(interval, stop)
 
