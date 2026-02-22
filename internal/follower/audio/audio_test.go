@@ -157,6 +157,8 @@ func TestExpose(t *testing.T) {
 	sendTestUDPPacket(t, address, stop)
 
 	// assert
+	audioStream.mu.Lock()
+	defer audioStream.mu.Unlock()
 	if audioStream.chunks.Len() < 1 {
 		t.Errorf("Test expose() failed: Message not written into stream.")
 	}
