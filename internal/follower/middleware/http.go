@@ -8,7 +8,7 @@ import (
 	"net/http"
 )
 
-func post(data map[string]string, url string) error {
+func Post(data map[string]string, url string) error {
 	fmt.Printf("Calling %s\n", url)
 	fmt.Printf("Payload %s\n", data)
 	jsonData, _ := json.Marshal(data)
