@@ -31,7 +31,7 @@ func TestHeartbeatPublisherProcessesEachUrl(t *testing.T) {
 	}()
 
 	urls := []string{serverAddr}
-	subscribers := subscription.Subscribers{Urls: urls}
+	subscribers := subscription.Subscribers{HeartbeatURLs: urls}
 
 	heartbeatPublisher := &HeartbeatPublisher{Subs: &subscribers}
 	heartbeatPublisher.SendHeartbeatToAll()

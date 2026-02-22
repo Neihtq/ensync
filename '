@@ -1,23 +1,20 @@
 package middleware
 
 import (
-	"fmt"
 	"net"
 	"testing"
 	"time"
 )
 
-func startTestServer(t *testing.T, address string, stop chan struct{}) {
-	fmt.Println("ADDRESS " + address)
-	err := expose(address, stop)
+func startTestServer(t *testing.T, port string, stop chan struct{}) {
+	err := expose(port, stop)
 	if err != nil {
 		t.Errorf("Server failed : %v", err)
 	}
 }
 
-func sendTestUDPPacket(t *testing.T, url string, stop chan struct{}) {
-	fmt.Println("URL DIAL " + url)
-	conn, err := net.Dial("udp", url)
+func sendTestUDPPacket(t *testing.T, port string, stop chan struct{}) {
+	conn, err := net.Dial("udp", "127.0.0.1"+port)
 	if err != nil {
 		t.Fatalf("Failed to dial server: %v", err)
 	}
@@ -35,12 +32,12 @@ func sendTestUDPPacket(t *testing.T, url string, stop chan struct{}) {
 
 func TestExpose(t *testing.T) {
 	stop := make(chan struct{})
-	localAddress := "127.0.0.1:9003"
+	port := ":9001"
 
-	go startTestServer(t, localAddress, stop)
+	go startTestServer(t, port, stop)
 	time.Sleep(100 * time.Millisecond)
 
-	sendTestUDPPacket(t, localAddress, stop)
+	sendTestUDPPacket(t, port, stop)
 }
 
 func TestSubscribeAndExpose(t *testing.T) {
@@ -54,6 +51,5 @@ func TestSubscribeAndExpose(t *testing.T) {
 	go SubscribeAndExpose(heartbeatPort, audioPort, stop, ipProvider, endpointProvider)
 	time.Sleep(100 * time.Millisecond)
 
-	address := ipProvider.GetIP().String() + ":" + heartbeatPort
-	sendTestUDPPacket(t, address, stop)
+	sendTestUDPPacket(t, heartbeatPort, stop)
 }
