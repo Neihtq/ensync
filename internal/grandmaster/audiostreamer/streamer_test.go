@@ -1,11 +1,16 @@
 package audiostreamer
 
 import (
+	"context"
 	"net"
+	"strconv"
 	"testing"
+	"time"
+
+	"ensync/internal/grandmaster/subscription"
 )
 
-func TestStreamAutoToAllLoop(t *testing.T) {
+func prepareTestFixtures(t *testing.T) string {
 	addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
@@ -15,7 +20,6 @@ func TestStreamAutoToAllLoop(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer conn.Close()
-
 	serverAddr := conn.LocalAddr().String()
 	received := make(chan string)
 	go func() {
@@ -27,7 +31,50 @@ func TestStreamAutoToAllLoop(t *testing.T) {
 		received <- string(buf[:n])
 	}()
 
-	urls := []string{serverAddr}
+	return serverAddr
+}
+
+func TestStreamAudioToAll(t *testing.T) {
+	// arrange
+	serverAddr := prepareTestFixtures(t)
 	filePath := "../../../assets/test_file.mp3"
-	StreamAudioToAll(filePath, urls)
+	urls := []string{serverAddr}
+	mockSourceProvider := MockSourceProvider{}
+	subs := subscription.Subscribers{AudioURLs: urls}
+
+	// act
+	audioStreamer := NewAudioStreamer(&subs, 1*time.Nanosecond, &mockSourceProvider)
+	audioStreamer.AddToQueue(filePath)
+	audioStreamer.StreamAudioToAll()
+
+	// assert
+	queueLength := audioStreamer.Queue.Len()
+	if queueLength > 0 {
+		t.Fatal("Failed StreamAudioToAll: Queue should be empt but had length " + strconv.Itoa(queueLength))
+	}
+}
+
+func TestStreamAudioToallLoop(t *testing.T) {
+	// arrange
+	serverAddr := prepareTestFixtures(t)
+	urls := []string{serverAddr}
+	mockSourceProvider := MockSourceProvider{}
+	subs := subscription.Subscribers{AudioURLs: urls}
+	duration := 1 * time.Nanosecond
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	audioStreamer := NewAudioStreamer(&subs, duration, &mockSourceProvider)
+	audioStreamer.ctx = ctx
+	audioStreamer.cancel = cancel
+
+	filePath := "../../../assets/test_file.mp3"
+	audioStreamer.AddToQueue(filePath)
+	stop := make(chan struct{})
+
+	// act
+	go audioStreamer.StreamAudioToAllLoop(duration, stop)
+
+	time.Sleep(100 * time.Millisecond)
+	close(stop)
 }

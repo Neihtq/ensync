@@ -2,10 +2,9 @@
 package audiostreamer
 
 import (
-	"fmt"
+	"context"
 	"log"
 	"net"
-	"os"
 	"strconv"
 	"sync"
 	"time"
@@ -14,22 +13,34 @@ import (
 	"ensync/internal/grandmaster/subscription"
 
 	"github.com/gammazero/deque"
-	"github.com/hajimehoshi/go-mp3"
 )
 
-const (
-	interval  = 10 * time.Millisecond
-	logPrefix = "[AudioStreamer]"
-)
+const logPrefix = "[AudioStreamer]"
 
 type AudioStreamer struct {
-	mu    sync.Mutex
-	Subs  *subscription.Subscribers
-	Queue deque.Deque[string] // List of tracks
+	mu     sync.Mutex
+	ctx    context.Context
+	cancel context.CancelFunc
+
+	Subs           *subscription.Subscribers
+	Queue          deque.Deque[string] // List of tracks
+	Interval       time.Duration
+	SourceProvider SourceProvider
 }
 
-func NewAudioStreamer(subs *subscription.Subscribers) *AudioStreamer {
-	return &AudioStreamer{Subs: subs}
+func NewAudioStreamer(
+	subs *subscription.Subscribers,
+	interval time.Duration,
+	sourceProvider SourceProvider,
+) *AudioStreamer {
+	ctx, cancel := context.WithCancel(context.Background())
+	return &AudioStreamer{
+		ctx:            ctx,
+		cancel:         cancel,
+		Subs:           subs,
+		Interval:       10 * time.Millisecond,
+		SourceProvider: sourceProvider,
+	}
 }
 
 func (streamer *AudioStreamer) AddToQueue(filePath string) {
@@ -38,18 +49,27 @@ func (streamer *AudioStreamer) AddToQueue(filePath string) {
 	streamer.Queue.PushBack(filePath)
 }
 
-func (streamer *AudioStreamer) StreamAudioToAllLoop() {
-	for {
-		streamer.mu.Lock()
-		if streamer.Queue.Len() == 0 {
-			streamer.mu.Unlock()
-			time.Sleep(100 * time.Millisecond)
-			continue
+func (streamer *AudioStreamer) StreamAudioToAll() {
+	streamer.mu.Lock()
+	filePath := streamer.Queue.PopFront()
+	streamer.mu.Unlock()
+	logging.Log(logPrefix, "Stream "+filePath)
+
+	audioSource := streamer.SourceProvider.GetSource(filePath)
+	ticker := time.NewTicker(streamer.Interval)
+
+	buffer := make([]byte, 3528)
+
+	for range ticker.C {
+		n, err := audioSource.Read(buffer)
+		if n == 0 || err != nil {
+			logging.Log(logPrefix, "Exiting play loop: n="+strconv.Itoa(n)+" err="+err.Error())
+			break
 		}
-		filePath := streamer.Queue.PopFront()
-		streamer.mu.Unlock()
-		logging.Log(logPrefix, "Stream "+filePath)
-		StreamAudioToAll(filePath, streamer.Subs.AudioURLs)
+
+		for _, url := range streamer.Subs.AudioURLs {
+			streamAudioToFollower(buffer[:n], url)
+		}
 	}
 }
 
@@ -68,31 +88,21 @@ func streamAudioToFollower(buffer []byte, url string) {
 	conn.Write(buffer)
 }
 
-func StreamAudioToAll(filePath string, urls []string) {
-	audioSource, err := os.Open(filePath)
-	if err != nil {
-		panic(err)
-	}
-	defer audioSource.Close()
-
-	decodedMp3, err := mp3.NewDecoder(audioSource)
-	fmt.Println("MP3 Sample Rate: {}", decodedMp3.SampleRate())
-	if err != nil {
-		panic("mp3.NewDecoder failed: " + err.Error())
-	}
-
-	ticker := time.NewTicker(interval)
-	buffer := make([]byte, 3528)
-
-	for range ticker.C {
-		n, err := decodedMp3.Read(buffer)
-		if n == 0 || err != nil {
-			logging.Log(logPrefix, "Exiting play loop: n="+strconv.Itoa(n)+" err="+err.Error())
-			break
-		}
-
-		for _, url := range urls {
-			streamAudioToFollower(buffer[:n], url)
+func (streamer *AudioStreamer) StreamAudioToAllLoop(sleepDuration time.Duration, stop chan struct{}) {
+	for {
+		select {
+		case <-stop:
+			logging.Log(logPrefix, "Stopping Audio Streamer...")
+			return
+		default:
+			streamer.mu.Lock()
+			if streamer.Queue.Len() == 0 {
+				streamer.mu.Unlock()
+				time.Sleep(sleepDuration)
+				continue
+			}
+			streamer.mu.Unlock()
+			streamer.StreamAudioToAll()
 		}
 	}
 }

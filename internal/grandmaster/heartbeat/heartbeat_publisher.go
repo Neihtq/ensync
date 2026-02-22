@@ -40,6 +40,8 @@ func SendHeartbeat(url string) {
 }
 
 func (publisher *HeartbeatPublisher) SendHeartbeatToAll() {
+	publisher.Subs.RLock()
+	defer publisher.Subs.RUnlock()
 	for _, url := range publisher.Subs.HeartbeatURLs {
 		go SendHeartbeat(url)
 	}
