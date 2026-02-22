@@ -8,12 +8,14 @@ import (
 	"time"
 
 	"ensync/internal/follower/audio"
+	"ensync/internal/follower/heartbeat"
 	"ensync/internal/follower/middleware"
+	"ensync/internal/follower/mirrorclock"
 )
 
 const (
-	audioPort = "9000"
-	udpPort   = "9001"
+	audioPort     = "9000"
+	heartbeatPort = "9001"
 )
 
 func main() {
@@ -22,11 +24,13 @@ func main() {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
+	mirrorClock := mirrorclock.NewMirrorClock()
 	ipProvider := middleware.RealIPProvider{}
 	endpointProvider := middleware.SubscriptionEndpointProvider{}
+	heartbeatReceiver := heartbeat.NewHeartbeatReceiver(heartbeatPort, ipProvider, mirrorClock)
 
 	fmt.Println("Starting Application.")
-	go middleware.SubscribeAndExpose(udpPort, audioPort, stop, ipProvider, endpointProvider)
+	go heartbeatReceiver.SubscribeAndExpose(audioPort, stop, endpointProvider)
 
 	fmt.Println("Launch audio server.")
 	audio.LaunchAudioServer(audioPort, ipProvider, stop)
