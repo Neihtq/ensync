@@ -2,6 +2,10 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"ensync/internal/grandmaster/audiostreamer"
 	"ensync/internal/grandmaster/heartbeat"
@@ -23,21 +27,29 @@ func initializeFixtures() (*subscription.Subscribers, *heartbeat.HeartbeatPublis
 	subscribers := &subscription.Subscribers{}
 	log("Initialize Heartbeat Publisher")
 	publisher := &heartbeat.HeartbeatPublisher{Subs: subscribers}
+
 	log("Initialize AudioStreamer")
-	audioStreamer := &audiostreamer.AudioStreamer{Subs: subscribers}
+	interval := 10 * time.Millisecond
+	audioProvider := &audiostreamer.AudioProvider{}
+	audioStreamer := audiostreamer.NewAudioStreamer(subscribers, interval, audioProvider)
 
 	return subscribers, publisher, audioStreamer
 }
 
 func main() {
 	subscribers, publisher, audioStreamer := initializeFixtures()
+	stop := make(chan struct{})
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+
 	go subscription.SubscriptionService(subscribers, subscriptionServicePort)
 
 	log("Start Heartbeat loop")
 	go publisher.HeartbeatLoop()
 
-	log("Start AudioStreamLoop")
-	go audioStreamer.StreamAudioToAllLoop()
+	interval := 100 * time.Millisecond
+	log("Start AudioStreamLoop with sending interval " + interval.String())
+	go audioStreamer.StreamAudioToAllLoop(interval, stop)
 
 	fmt.Println("Continue? [y]es")
 	var input string
@@ -46,6 +58,9 @@ func main() {
 		filePath := "./assets/test_audio.mp3"
 		audioStreamer.AddToQueue(filePath)
 	}
-	for {
-	}
+
+	<-sigChan
+	log("Shutting down...")
+	time.Sleep(time.Millisecond * 500)
+	log("Exit.")
 }

@@ -13,22 +13,43 @@ import (
 func TestAudioStream(t *testing.T) {
 	audioStream := NewAudioStream()
 
-	mockData := []byte{1, 2, 3}
+	// Test Read empty buffer
+	mockBuffer := []byte{}
+	numBytes, err := audioStream.Read(mockBuffer)
+	if err != nil {
+		t.Errorf("Read failed. %s", err.Error())
+	}
+	if numBytes > 0 {
+		t.Errorf("Read from empty Buffer failed: Expected %d number of bytes but received %d number of bytres", 0, numBytes)
+	}
 
 	// Test WriteToBuffer
+	mockData := []byte{1, 2, 3}
 	audioStream.WriteToBuffer(mockData)
 	if !slices.Equal(audioStream.data, mockData) {
 		t.Errorf("Writing to Buffer failed: Expected %v but received %v", mockData, audioStream.data)
 	}
 
-	// Test Read
-	mockBuffer := make([]byte, len(mockData))
-	numBytes, err := audioStream.Read(mockBuffer)
+	// Test Read below threshold
+	mockBuffer = make([]byte, len(mockData))
+	numBytes, err = audioStream.Read(mockBuffer)
+	if err != nil {
+		t.Errorf("Read failed. %s", err.Error())
+	}
+	if numBytes > 0 {
+		t.Errorf("Read from Buffer below threshold failed: Expected %d number of bytes but received %d number of bytres", len(mockData), numBytes)
+	}
+
+	// Test Read above threshold
+	mockData = make([]byte, 38400)
+	audioStream.WriteToBuffer(mockData)
+	mockBuffer = make([]byte, len(mockData))
+	numBytes, err = audioStream.Read(mockBuffer)
 	if err != nil {
 		t.Errorf("Read failed. %s", err.Error())
 	}
 	if numBytes != len(mockData) {
-		t.Errorf("Read from Buffer failed: Expected %d number of bytes but received %d number of bytres", len(mockData), numBytes)
+		t.Errorf("Read from Buffer above threshold failed: Expected %d number of bytes but received %d number of bytres", len(mockData), numBytes)
 	}
 }
 
