@@ -2,6 +2,7 @@
 package heartbeat
 
 import (
+	"encoding/binary"
 	"log"
 	"net"
 	"time"
@@ -11,8 +12,9 @@ import (
 )
 
 const (
-	logPrefix = "[HeartbeatPublisher]"
-	interval  = 100 * time.Millisecond
+	logPrefix    = "[HeartbeatPublisher]"
+	interval     = 100 * time.Millisecond
+	envelopeSize = 8
 )
 
 type HeartbeatPublisher struct {
@@ -31,8 +33,10 @@ func SendHeartbeat(url string) {
 	}
 	defer conn.Close()
 
-	message := []byte("heartbeat")
-	_, err = conn.Write(message)
+	envelope := make([]byte, envelopeSize)
+	timestamp := time.Now().UnixNano()
+	binary.BigEndian.PutUint64(envelope, uint64(timestamp))
+	_, err = conn.Write(envelope)
 	if err != nil {
 		logging.Log(logPrefix, "Error sending message: "+err.Error())
 		return
