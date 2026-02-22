@@ -52,3 +52,28 @@ func TestHeartbeatPublisherProcessesEachUrl(t *testing.T) {
 		t.Errorf("Test timed out: No UDP packet received")
 	}
 }
+
+func TestHeartBeatLoop(t *testing.T) {
+	// arrange
+	addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	conn, err := net.ListenUDP("udp", addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	serverAddr := conn.LocalAddr().String()
+	urls := []string{serverAddr}
+	subscribers := subscription.Subscribers{HeartbeatURLs: urls}
+	heartbeatPublisher := &HeartbeatPublisher{Subs: &subscribers}
+
+	interval := 1 * time.Nanosecond
+	stop := make(chan struct{})
+
+	// act
+	go heartbeatPublisher.HeartbeatLoop(interval, stop)
+
+	time.Sleep(100 * time.Millisecond)
+	close(stop)
+}

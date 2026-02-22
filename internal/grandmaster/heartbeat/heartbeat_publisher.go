@@ -12,9 +12,9 @@ import (
 )
 
 const (
-	logPrefix    = "[HeartbeatPublisher]"
-	interval     = 100 * time.Millisecond
-	envelopeSize = 8
+	logPrefix     = "[HeartbeatPublisher]"
+	constInterval = 100 * time.Millisecond
+	envelopeSize  = 8
 )
 
 type HeartbeatPublisher struct {
@@ -51,11 +51,14 @@ func (publisher *HeartbeatPublisher) SendHeartbeatToAll() {
 	}
 }
 
-func (publisher *HeartbeatPublisher) HeartbeatLoop() {
+func (publisher *HeartbeatPublisher) HeartbeatLoop(interval time.Duration, stop chan struct{}) {
 	ticker := time.NewTicker(interval)
 
 	for {
 		select {
+		case <-stop:
+			logging.Log(logPrefix, "Stopping heartbeat loop...")
+			return
 		case <-ticker.C:
 			publisher.SendHeartbeatToAll()
 		}
