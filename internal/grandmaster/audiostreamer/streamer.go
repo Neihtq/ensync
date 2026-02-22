@@ -2,6 +2,7 @@
 package audiostreamer
 
 import (
+	"fmt"
 	"log"
 	"net"
 	"os"
@@ -13,10 +14,11 @@ import (
 	"ensync/internal/grandmaster/subscription"
 
 	"github.com/gammazero/deque"
+	"github.com/hajimehoshi/go-mp3"
 )
 
 const (
-	interval  = 20 * time.Millisecond
+	interval  = 10 * time.Millisecond
 	logPrefix = "[AudioStreamer]"
 )
 
@@ -30,30 +32,32 @@ func NewAudioStreamer(subs *subscription.Subscribers) *AudioStreamer {
 	return &AudioStreamer{Subs: subs}
 }
 
-func (streamer *AudioStreamer) addToQueue(filePath string) {
+func (streamer *AudioStreamer) AddToQueue(filePath string) {
 	streamer.mu.Lock()
+	defer streamer.mu.Unlock()
 	streamer.Queue.PushBack(filePath)
-	streamer.mu.Unlock()
 }
 
 func (streamer *AudioStreamer) StreamAudioToAllLoop() {
 	for {
 		streamer.mu.Lock()
-		if streamer.Queue.Len() > 0 {
-			filePath := streamer.Queue.PopFront()
+		if streamer.Queue.Len() == 0 {
 			streamer.mu.Unlock()
-			StreamAudioToAll(filePath, streamer.Subs.AudioURLs)
+			time.Sleep(100 * time.Millisecond)
+			continue
 		}
+		filePath := streamer.Queue.PopFront()
+		streamer.mu.Unlock()
+		logging.Log(logPrefix, "Stream "+filePath)
+		StreamAudioToAll(filePath, streamer.Subs.AudioURLs)
 	}
 }
 
 func streamAudioToFollower(buffer []byte, url string) {
-	logging.Log(logPrefix, "Send audio")
 	addr, err := net.ResolveUDPAddr("udp", url)
 	if err != nil {
 		log.Fatal(err)
 	}
-	logging.Log(logPrefix, "Send audio packaget to address: "+addr.String())
 
 	conn, err := net.DialUDP("udp", nil, addr)
 	if err != nil {
@@ -71,11 +75,17 @@ func StreamAudioToAll(filePath string, urls []string) {
 	}
 	defer audioSource.Close()
 
+	decodedMp3, err := mp3.NewDecoder(audioSource)
+	fmt.Println("MP3 Sample Rate: {}", decodedMp3.SampleRate())
+	if err != nil {
+		panic("mp3.NewDecoder failed: " + err.Error())
+	}
+
 	ticker := time.NewTicker(interval)
 	buffer := make([]byte, 3528)
 
 	for range ticker.C {
-		n, err := audioSource.Read(buffer)
+		n, err := decodedMp3.Read(buffer)
 		if n == 0 || err != nil {
 			logging.Log(logPrefix, "Exiting play loop: n="+strconv.Itoa(n)+" err="+err.Error())
 			break

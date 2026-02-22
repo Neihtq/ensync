@@ -20,13 +20,10 @@ type HeartbeatPublisher struct {
 }
 
 func SendHeartbeat(url string) {
-	logging.Log(logPrefix, "Send hearbeat to "+url)
-
 	addr, err := net.ResolveUDPAddr("udp", url)
 	if err != nil {
 		log.Fatal(err)
 	}
-	logging.Log(logPrefix, "Address: "+addr.String())
 
 	conn, err := net.DialUDP("udp", nil, addr)
 	if err != nil {
@@ -40,8 +37,6 @@ func SendHeartbeat(url string) {
 		logging.Log(logPrefix, "Error sending message: "+err.Error())
 		return
 	}
-
-	logging.Log(logPrefix, "Send message to "+url)
 }
 
 func (publisher *HeartbeatPublisher) SendHeartbeatToAll() {

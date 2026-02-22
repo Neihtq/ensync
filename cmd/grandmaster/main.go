@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+
 	"ensync/internal/grandmaster/audiostreamer"
 	"ensync/internal/grandmaster/heartbeat"
 	"ensync/internal/grandmaster/logging"
@@ -36,4 +38,14 @@ func main() {
 
 	log("Start AudioStreamLoop")
 	go audioStreamer.StreamAudioToAllLoop()
+
+	fmt.Println("Continue? [y]es")
+	var input string
+	fmt.Scan(&input)
+	if input == "y" {
+		filePath := "./assets/test_audio.mp3"
+		audioStreamer.AddToQueue(filePath)
+	}
+	for {
+	}
 }
