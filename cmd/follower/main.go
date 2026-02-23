@@ -32,7 +32,7 @@ func main() {
 	go heartbeatReceiver.SubscribeAndExpose(audioPort, stop, endpointProvider)
 
 	fmt.Println("Launch audio server.")
-	audio.LaunchAudioServer(audioPort, ipProvider, stop)
+	audio.LaunchAudioServer(audioPort, ipProvider, mirrorClock, stop)
 
 	<-sigChan
 	fmt.Println("\nShutting down...")
