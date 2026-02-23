@@ -38,12 +38,13 @@ func TestStreamAudioToAll(t *testing.T) {
 	// arrange
 	serverAddr := prepareTestFixtures(t)
 	filePath := "../../../assets/test_file.mp3"
-	urls := []string{serverAddr}
 	mockSourceProvider := MockSourceProvider{}
-	subs := follower.Followers{AudioURLs: urls}
+	follow := follower.Follower{AudioURL: serverAddr}
+	followers := follower.NewFollowers()
+	followers.Followers[serverAddr] = follow
 
 	// act
-	audioStreamer := NewAudioStreamer(&subs, 1*time.Nanosecond, &mockSourceProvider)
+	audioStreamer := NewAudioStreamer(followers, 1*time.Nanosecond, &mockSourceProvider)
 	audioStreamer.AddToQueue(filePath)
 	audioStreamer.StreamAudioToAll()
 
@@ -57,14 +58,16 @@ func TestStreamAudioToAll(t *testing.T) {
 func TestStreamAudioToallLoop(t *testing.T) {
 	// arrange
 	serverAddr := prepareTestFixtures(t)
-	urls := []string{serverAddr}
 	mockSourceProvider := MockSourceProvider{}
-	subs := follower.Followers{AudioURLs: urls}
+	follows := map[string]follower.Follower{
+		serverAddr: {AudioURL: serverAddr},
+	}
+	followers := follower.Followers{Followers: follows}
 	duration := 1 * time.Nanosecond
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	audioStreamer := NewAudioStreamer(&subs, duration, &mockSourceProvider)
+	audioStreamer := NewAudioStreamer(&followers, duration, &mockSourceProvider)
 	audioStreamer.ctx = ctx
 	audioStreamer.cancel = cancel
 

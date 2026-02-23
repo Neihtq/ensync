@@ -46,7 +46,8 @@ func SendHeartbeat(url string) {
 func (publisher *HeartbeatPublisher) SendHeartbeatToAll() {
 	publisher.Followers.RLock()
 	defer publisher.Followers.RUnlock()
-	for _, url := range publisher.Followers.HeartbeatURLs {
+	for _, f := range publisher.Followers.Followers {
+		url := f.HeartbeatURL
 		go SendHeartbeat(url)
 	}
 }
