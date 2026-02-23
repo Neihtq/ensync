@@ -24,7 +24,7 @@ func log(message string) {
 
 func initializeFixtures() (*follower.Followers, *heartbeat.HeartbeatPublisher, *audiostreamer.AudioStreamer) {
 	log("Initialize registry of Subscribers")
-	followers := &follower.Followers{}
+	followers := follower.NewFollowers()
 	log("Initialize Heartbeat Publisher")
 	publisher := &heartbeat.HeartbeatPublisher{Followers: followers}
 
@@ -37,12 +37,12 @@ func initializeFixtures() (*follower.Followers, *heartbeat.HeartbeatPublisher, *
 }
 
 func main() {
-	subscribers, publisher, audioStreamer := initializeFixtures()
+	followers, publisher, audioStreamer := initializeFixtures()
 	stop := make(chan struct{})
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
-	go follower.FollowerService(subscribers, followerServicePort)
+	go follower.FollowerService(followers, followerServicePort)
 
 	interval := 100 * time.Millisecond
 

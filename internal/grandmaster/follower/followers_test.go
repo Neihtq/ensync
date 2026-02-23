@@ -6,8 +6,8 @@ import (
 	"testing"
 )
 
-func TestCreateFollowerAddUrlsToFollowers(t *testing.T) {
-	followers := &Followers{}
+func TestAddFollowerAddsFollowerWithURLs(t *testing.T) {
+	followers := NewFollowers()
 
 	address := "http://127.0.0.1"
 	heartbeatPort := "5000"
@@ -20,19 +20,15 @@ func TestCreateFollowerAddUrlsToFollowers(t *testing.T) {
 	request.Header.Set("Content-Type", "application/json")
 	writer := httptest.NewRecorder()
 
-	followers.CreateFollower(writer, request)
+	followers.AddFollower(writer, request)
 
-	if len(followers.HeartbeatURLs) != 1 {
-		t.Error("Expected one HeartbeatUrl in Followers. URLs: %u", followers.HeartbeatURLs)
+	if len(followers.Followers) != 1 {
+		t.Error("Expected one HeartbeatUrl in Followers. URLs: %u", followers.Followers)
 	}
-	if followers.HeartbeatURLs[0] != heartbeatURL {
-		t.Error("Expected HeartbeatUrl to be "+heartbeatURL+". Got %s instead", heartbeatURL, followers.HeartbeatURLs[0])
+	if followers.Followers[address].HeartbeatURL != heartbeatURL {
+		t.Error("Expected HeartbeatUrl to be "+heartbeatURL+". Got %s instead", heartbeatURL, followers.Followers[address].HeartbeatURL)
 	}
-
-	if len(followers.AudioURLs) != 1 {
-		t.Error("Expected one AudioUrl in Followers. URLs: %u", followers.AudioURLs)
-	}
-	if followers.AudioURLs[0] != audioURL {
-		t.Error("Expected AudioUrl to be "+audioURL+". Got %s instead", audioURL, followers.AudioURLs[0])
+	if followers.Followers[address].AudioURL != audioURL {
+		t.Error("Expected AudioUrl to be "+audioURL+". Got %s instead", audioURL, followers.Followers[address].AudioURL)
 	}
 }

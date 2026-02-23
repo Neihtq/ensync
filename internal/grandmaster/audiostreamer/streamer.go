@@ -27,7 +27,7 @@ type AudioStreamer struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 
-	Subs           *follower.Followers
+	Followers      *follower.Followers
 	Queue          deque.Deque[string] // List of tracks
 	Interval       time.Duration
 	SourceProvider SourceProvider
@@ -35,7 +35,7 @@ type AudioStreamer struct {
 }
 
 func NewAudioStreamer(
-	subs *follower.Followers,
+	followers *follower.Followers,
 	interval time.Duration,
 	sourceProvider SourceProvider,
 ) *AudioStreamer {
@@ -43,7 +43,7 @@ func NewAudioStreamer(
 	return &AudioStreamer{
 		ctx:            ctx,
 		cancel:         cancel,
-		Subs:           subs,
+		Followers:      followers,
 		Interval:       10 * time.Millisecond,
 		SourceProvider: sourceProvider,
 	}
@@ -78,8 +78,9 @@ func (streamer *AudioStreamer) StreamAudioToAll() {
 		binary.BigEndian.PutUint64(envelope[:headerSize], uint64(playAt))
 		copy(envelope[8:], buffer[:n])
 
-		for _, url := range streamer.Subs.AudioURLs {
-			streamAudioToFollower(envelope, url)
+		for _, f := range streamer.Followers.Followers {
+			url := f.AudioURL
+			go streamAudioToFollower(envelope, url)
 		}
 	}
 }

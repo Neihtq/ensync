@@ -32,13 +32,13 @@ func TestHeartbeatPublisherProcessesEachUrl(t *testing.T) {
 		received <- buf[:n]
 	}()
 
-	urls := []string{serverAddr}
-	subscribers := follower.Followers{HeartbeatURLs: urls}
-
+	follow := follower.Follower{HeartbeatURL: serverAddr}
+	followers := follower.NewFollowers()
+	followers.Followers[serverAddr] = follow
 	timeNow := uint64(time.Now().UnixNano())
 
 	// act
-	heartbeatPublisher := &HeartbeatPublisher{Followers: &subscribers}
+	heartbeatPublisher := &HeartbeatPublisher{Followers: followers}
 	heartbeatPublisher.SendHeartbeatToAll()
 
 	// assert
@@ -63,10 +63,13 @@ func TestHeartBeatLoop(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	serverAddr := conn.LocalAddr().String()
-	urls := []string{serverAddr}
-	subscribers := follower.Followers{HeartbeatURLs: urls}
-	heartbeatPublisher := &HeartbeatPublisher{Followers: &subscribers}
+	follows := map[string]follower.Follower{
+		serverAddr: {HeartbeatURL: serverAddr},
+	}
+	followers := follower.Followers{Followers: follows}
+	heartbeatPublisher := &HeartbeatPublisher{Followers: &followers}
 
 	interval := 1 * time.Nanosecond
 	stop := make(chan struct{})

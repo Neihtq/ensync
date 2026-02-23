@@ -17,16 +17,33 @@ type followersRequest struct {
 	AudioPort     string `json:"audioPort"`
 }
 
-type Followers struct {
-	sync.RWMutex
-	HeartbeatURLs []string
-	AudioURLs     []string
+type Follower struct {
+	HeartbeatURL string
+	AudioURL     string
 }
 
-func (s *Followers) CreateFollower(writer http.ResponseWriter, request *http.Request) {
+func NewFollower(heartbeatURL string, audioURL string) Follower {
+	return Follower{
+		HeartbeatURL: heartbeatURL,
+		AudioURL:     audioURL,
+	}
+}
+
+type Followers struct {
+	sync.RWMutex
+	Followers map[string]Follower
+}
+
+func NewFollowers() *Followers {
+	return &Followers{
+		Followers: make(map[string]Follower),
+	}
+}
+
+func (followers *Followers) AddFollower(writer http.ResponseWriter, request *http.Request) {
 	logging.Log(followsLogPrefix, "Received request for /followers")
-	s.Lock()
-	defer s.Unlock()
+	followers.Lock()
+	defer followers.Unlock()
 
 	var req followersRequest
 	json.NewDecoder(request.Body).Decode(&req)
@@ -34,10 +51,11 @@ func (s *Followers) CreateFollower(writer http.ResponseWriter, request *http.Req
 	if addr == "" {
 		panic("Provided address is empty!")
 	}
-	heartbeatURL := addr + ":" + req.HeartbeatPort
-	audioURL := addr + ":" + req.AudioPort
-	s.HeartbeatURLs = append(s.HeartbeatURLs, heartbeatURL)
-	s.AudioURLs = append(s.AudioURLs, audioURL)
+
+	followers.Followers[addr] = NewFollower(
+		addr+":"+req.HeartbeatPort,
+		addr+":"+req.AudioPort,
+	)
 
 	logging.Log(followsLogPrefix, "Created Follower: "+addr)
 }
