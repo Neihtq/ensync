@@ -3,6 +3,8 @@ package audio
 import (
 	"sync"
 
+	"ensync/internal/follower/mirrorclock"
+
 	"github.com/gammazero/deque"
 )
 
@@ -16,10 +18,11 @@ type AudioStream struct {
 	chunks      deque.Deque[AudioChunk]
 	bufferSize  int
 	isBuffering bool
+	clock       *mirrorclock.MirrorClock
 }
 
-func NewAudioStream() *AudioStream {
-	return &AudioStream{isBuffering: true, bufferSize: 0}
+func NewAudioStream(clock *mirrorclock.MirrorClock) *AudioStream {
+	return &AudioStream{isBuffering: true, bufferSize: 0, clock: clock}
 }
 
 func (stream *AudioStream) WriteToBuffer(data []byte, playAt int64) {
@@ -54,6 +57,11 @@ func (stream *AudioStream) Read(playBuffer []byte) (int, error) {
 	}
 
 	targetChunk := stream.chunks.Front()
+
+	if stream.clock.Now().UnixNano() < targetChunk.playAt {
+		return 0, nil
+	}
+
 	numBytes := copy(playBuffer, targetChunk.data)
 
 	if numBytes < len(targetChunk.data) {

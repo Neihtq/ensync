@@ -9,11 +9,13 @@ import (
 	"time"
 
 	"ensync/internal/follower/middleware"
+	"ensync/internal/follower/mirrorclock"
 )
 
 func TestReadAboveThreshol(t *testing.T) {
 	// arrange
-	audioStream := NewAudioStream()
+	mirrorClock := mirrorclock.NewMirrorClock()
+	audioStream := NewAudioStream(mirrorClock)
 	playAt := int64(5)
 	mockData := make([]byte, 38400)
 	audioStream.WriteToBuffer(mockData, playAt)
@@ -32,7 +34,8 @@ func TestReadAboveThreshol(t *testing.T) {
 
 func TestReadBelowThreshold(t *testing.T) {
 	// arrange
-	audioStream := NewAudioStream()
+	mirrorClock := mirrorclock.NewMirrorClock()
+	audioStream := NewAudioStream(mirrorClock)
 	playAt := int64(5)
 	mockData := []byte{1, 2, 3}
 	mockBuffer := make([]byte, len(mockData))
@@ -51,7 +54,8 @@ func TestReadBelowThreshold(t *testing.T) {
 
 func TestWriteToBuffer(t *testing.T) {
 	// arrange
-	audioStream := NewAudioStream()
+	mirrorClock := mirrorclock.NewMirrorClock()
+	audioStream := NewAudioStream(mirrorClock)
 	playAt := int64(5)
 	mockData := []byte{1, 2, 3}
 	audioStream.WriteToBuffer(mockData, playAt)
@@ -71,7 +75,8 @@ func TestWriteToBuffer(t *testing.T) {
 
 func TestReadEmptyBuffer(t *testing.T) {
 	// arrange
-	audioStream := NewAudioStream()
+	mirrorClock := mirrorclock.NewMirrorClock()
+	audioStream := NewAudioStream(mirrorClock)
 	mockBuffer := []byte{}
 
 	// act
@@ -87,7 +92,8 @@ func TestReadEmptyBuffer(t *testing.T) {
 
 func TestAudioStreamHasEmptyBufferAgain(t *testing.T) {
 	// arrange
-	audioStream := NewAudioStream()
+	mirrorClock := mirrorclock.NewMirrorClock()
+	audioStream := NewAudioStream(mirrorClock)
 	playAt := int64(5)
 	mockData := make([]byte, 38400)
 	audioStream.WriteToBuffer(mockData, playAt)
@@ -103,7 +109,30 @@ func TestAudioStreamHasEmptyBufferAgain(t *testing.T) {
 		t.Errorf("Read failed. %s", err.Error())
 	}
 	if !audioStream.isBuffering {
-		t.Errorf("Test Audio stream has emptieg buffer failed: Expected isBuffering to be true but was %v", audioStream.isBuffering)
+		t.Errorf("Test Audio stream has emptie buffer failed: Expected isBuffering to be true but was %v", audioStream.isBuffering)
+	}
+}
+
+func TestAudioStreamDoesNotPlayWhenItIsNotTime(t *testing.T) {
+	// arrange
+	mirrorClock := mirrorclock.NewMirrorClock()
+	audioStream := NewAudioStream(mirrorClock)
+	playAt := int64(time.Now().Add(1 * time.Hour).UnixNano())
+	mockData := make([]byte, 38400)
+	audioStream.WriteToBuffer(mockData, playAt)
+	mockBuffer := make([]byte, len(mockData))
+
+	// empty buffer and flip isBuffering flag again
+	audioStream.Read(mockBuffer)
+
+	// act
+	numBytes, err := audioStream.Read(mockBuffer)
+	// assert
+	if err != nil {
+		t.Errorf("Read failed. %s", err.Error())
+	}
+	if numBytes > 0 {
+		t.Errorf("PlayAt test failed. Expected 0 bytes but got %d", numBytes)
 	}
 }
 
@@ -132,9 +161,10 @@ func sendTestUDPPacket(t *testing.T, url string, stop chan struct{}) {
 func TestLaunchAudioServer(t *testing.T) {
 	port := "9001"
 	ipProvider := middleware.MockIPProvider{FakeIP: []byte{127, 0, 0, 1}}
+	mirrorClock := mirrorclock.NewMirrorClock()
 	stop := make(chan struct{})
 
-	go LaunchAudioServer(port, ipProvider, stop)
+	go LaunchAudioServer(port, ipProvider, mirrorClock, stop)
 	time.Sleep(100 * time.Millisecond)
 
 	address := ipProvider.GetIP().String() + ":" + port
@@ -144,7 +174,8 @@ func TestLaunchAudioServer(t *testing.T) {
 
 func TestExpose(t *testing.T) {
 	// arrange
-	audioStream := NewAudioStream()
+	mirrorClock := mirrorclock.NewMirrorClock()
+	audioStream := NewAudioStream(mirrorClock)
 	port := "9001"
 	ipProvider := middleware.MockIPProvider{FakeIP: []byte{127, 0, 0, 1}}
 	address := ipProvider.GetIP().String() + ":" + port
