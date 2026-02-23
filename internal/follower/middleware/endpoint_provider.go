@@ -4,10 +4,10 @@ type EndpointProvider interface {
 	GetEndpoint() string
 }
 
-type SubscriptionEndpointProvider struct{}
+type FollowersEndpointProvider struct{}
 
-func (s SubscriptionEndpointProvider) GetEndpoint() string {
-	return "http://localhost:8080/subscribe"
+func (s FollowersEndpointProvider) GetEndpoint() string {
+	return "http://localhost:8080/followers"
 }
 
 type MockEndpointProvider struct {

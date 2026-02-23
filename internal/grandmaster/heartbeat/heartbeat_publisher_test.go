@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"ensync/internal/grandmaster/subscription"
+	"ensync/internal/grandmaster/follower"
 )
 
 func TestHeartbeatPublisherProcessesEachUrl(t *testing.T) {
@@ -33,12 +33,12 @@ func TestHeartbeatPublisherProcessesEachUrl(t *testing.T) {
 	}()
 
 	urls := []string{serverAddr}
-	subscribers := subscription.Subscribers{HeartbeatURLs: urls}
+	subscribers := follower.Followers{HeartbeatURLs: urls}
 
 	timeNow := uint64(time.Now().UnixNano())
 
 	// act
-	heartbeatPublisher := &HeartbeatPublisher{Subs: &subscribers}
+	heartbeatPublisher := &HeartbeatPublisher{Followers: &subscribers}
 	heartbeatPublisher.SendHeartbeatToAll()
 
 	// assert
@@ -65,8 +65,8 @@ func TestHeartBeatLoop(t *testing.T) {
 	}
 	serverAddr := conn.LocalAddr().String()
 	urls := []string{serverAddr}
-	subscribers := subscription.Subscribers{HeartbeatURLs: urls}
-	heartbeatPublisher := &HeartbeatPublisher{Subs: &subscribers}
+	subscribers := follower.Followers{HeartbeatURLs: urls}
+	heartbeatPublisher := &HeartbeatPublisher{Followers: &subscribers}
 
 	interval := 1 * time.Nanosecond
 	stop := make(chan struct{})

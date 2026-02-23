@@ -1,5 +1,5 @@
-// Package subscription for connection related logic
-package subscription
+// Package follower for Follower Service
+package follower
 
 import (
 	"encoding/json"
@@ -9,26 +9,26 @@ import (
 	"ensync/internal/grandmaster/logging"
 )
 
-const subscribersLogPrefix = "[Subscribers]"
+const followsLogPrefix = "[Followers]"
 
-type subscribeRequest struct {
+type followersRequest struct {
 	Address       string `json:"address"`
 	HeartbeatPort string `json:"heartbeatPort"`
 	AudioPort     string `json:"audioPort"`
 }
 
-type Subscribers struct {
+type Followers struct {
 	sync.RWMutex
 	HeartbeatURLs []string
 	AudioURLs     []string
 }
 
-func (s *Subscribers) Subscribe(writer http.ResponseWriter, request *http.Request) {
-	logging.Log(subscribersLogPrefix, "Received request for /subscribe")
+func (s *Followers) CreateFollower(writer http.ResponseWriter, request *http.Request) {
+	logging.Log(followsLogPrefix, "Received request for /followers")
 	s.Lock()
 	defer s.Unlock()
 
-	var req subscribeRequest
+	var req followersRequest
 	json.NewDecoder(request.Body).Decode(&req)
 	addr := req.Address
 	if addr == "" {
@@ -39,5 +39,5 @@ func (s *Subscribers) Subscribe(writer http.ResponseWriter, request *http.Reques
 	s.HeartbeatURLs = append(s.HeartbeatURLs, heartbeatURL)
 	s.AudioURLs = append(s.AudioURLs, audioURL)
 
-	logging.Log(subscribersLogPrefix, "Subscribed: "+addr)
+	logging.Log(followsLogPrefix, "Created Follower: "+addr)
 }

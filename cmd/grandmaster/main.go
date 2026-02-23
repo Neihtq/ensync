@@ -8,32 +8,32 @@ import (
 	"time"
 
 	"ensync/internal/grandmaster/audiostreamer"
+	"ensync/internal/grandmaster/follower"
 	"ensync/internal/grandmaster/heartbeat"
 	"ensync/internal/grandmaster/logging"
-	"ensync/internal/grandmaster/subscription"
 )
 
 const (
-	logPrefix               = "[Main]"
-	subscriptionServicePort = ":8080"
+	logPrefix           = "[Main]"
+	followerServicePort = ":8080"
 )
 
 func log(message string) {
 	logging.Log(logPrefix, message)
 }
 
-func initializeFixtures() (*subscription.Subscribers, *heartbeat.HeartbeatPublisher, *audiostreamer.AudioStreamer) {
+func initializeFixtures() (*follower.Followers, *heartbeat.HeartbeatPublisher, *audiostreamer.AudioStreamer) {
 	log("Initialize registry of Subscribers")
-	subscribers := &subscription.Subscribers{}
+	followers := &follower.Followers{}
 	log("Initialize Heartbeat Publisher")
-	publisher := &heartbeat.HeartbeatPublisher{Subs: subscribers}
+	publisher := &heartbeat.HeartbeatPublisher{Followers: followers}
 
 	log("Initialize AudioStreamer")
 	interval := 10 * time.Millisecond
 	audioProvider := &audiostreamer.AudioProvider{}
-	audioStreamer := audiostreamer.NewAudioStreamer(subscribers, interval, audioProvider)
+	audioStreamer := audiostreamer.NewAudioStreamer(followers, interval, audioProvider)
 
-	return subscribers, publisher, audioStreamer
+	return followers, publisher, audioStreamer
 }
 
 func main() {
@@ -42,7 +42,7 @@ func main() {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
-	go subscription.SubscriptionService(subscribers, subscriptionServicePort)
+	go follower.FollowerService(subscribers, followerServicePort)
 
 	interval := 100 * time.Millisecond
 
