@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"ensync/internal/follower/middleware"
+	"ensync/internal/follower/mirrorclock"
 )
 
 const headerSize = 8
@@ -60,8 +61,13 @@ func checkPlayerError(player ErrorReporter, sleepInterval time.Duration) {
 	}
 }
 
-func LaunchAudioServer(port string, ipProvider middleware.IPProvider, stop chan struct{}) {
-	audioStream := NewAudioStream()
+func LaunchAudioServer(
+	port string,
+	ipProvider middleware.IPProvider,
+	clock *mirrorclock.MirrorClock,
+	stop chan struct{},
+) {
+	audioStream := NewAudioStream(clock)
 	context, player := NewPlayer(audioStream)
 	fmt.Println("Context {}, Player {}", context, player)
 
