@@ -19,6 +19,9 @@ func FollowerService(followers *Followers, port string) {
 	log("Initialize '/followers' endpoint")
 	mux.HandleFunc("POST /followers", followers.AddFollower)
 
+	log("Initialize '/followers' endpoint")
+	mux.HandleFunc("DELETE /followers/{address}", followers.RemoveFollower)
+
 	log("Listening on port " + port)
 	http.ListenAndServe(port, mux)
 }

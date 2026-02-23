@@ -11,10 +11,14 @@ import (
 
 const followsLogPrefix = "[Followers]"
 
-type followersRequest struct {
+type addFollowersRequest struct {
 	Address       string `json:"address"`
 	HeartbeatPort string `json:"heartbeatPort"`
 	AudioPort     string `json:"audioPort"`
+}
+
+type removeFollowersRequest struct {
+	Address string `json:"address"`
 }
 
 type Follower struct {
@@ -41,21 +45,44 @@ func NewFollowers() *Followers {
 }
 
 func (followers *Followers) AddFollower(writer http.ResponseWriter, request *http.Request) {
-	logging.Log(followsLogPrefix, "Received request for /followers")
+	logging.Log(followsLogPrefix, "Received POST request for /followers")
 	followers.Lock()
 	defer followers.Unlock()
 
-	var req followersRequest
+	var req addFollowersRequest
 	json.NewDecoder(request.Body).Decode(&req)
 	addr := req.Address
-	if addr == "" {
-		panic("Provided address is empty!")
+	heartbeatPort := req.HeartbeatPort
+	audioPort := req.AudioPort
+	if addr == "" || heartbeatPort == "" || audioPort == "" {
+		http.Error(writer, "Address, Heartbeat Port, or Audio Port are missing or empty", http.StatusBadRequest)
 	}
 
 	followers.Followers[addr] = NewFollower(
-		addr+":"+req.HeartbeatPort,
-		addr+":"+req.AudioPort,
+		addr+":"+heartbeatPort,
+		addr+":"+audioPort,
 	)
 
 	logging.Log(followsLogPrefix, "Created Follower: "+addr)
+	writer.WriteHeader(http.StatusCreated)
+}
+
+func (followers *Followers) RemoveFollower(writer http.ResponseWriter, request *http.Request) {
+	logging.Log(followsLogPrefix, "Received DELETE request for /followers")
+	followers.Lock()
+	defer followers.Unlock()
+
+	addr := request.PathValue("address")
+
+	if addr == "" {
+		http.Error(writer, "Provided address is empty", http.StatusBadRequest)
+		return
+	}
+
+	if _, exists := followers.Followers[addr]; exists {
+		delete(followers.Followers, addr)
+		logging.Log(followsLogPrefix, "Removed Follower: "+addr)
+	}
+
+	writer.WriteHeader(http.StatusNoContent)
 }
