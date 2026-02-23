@@ -5,7 +5,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"ensync/internal/follower/audio"
 	"ensync/internal/follower/heartbeat"
@@ -39,6 +38,10 @@ func main() {
 	fmt.Println("\nShutting down...")
 	close(stop)
 
-	time.Sleep(time.Millisecond * 500)
+	err := middleware.Delete(endpointProvider.GetEndpoint(), ipProvider.GetIP().String())
+	if err != nil {
+		fmt.Println("Error: ", err)
+	}
+
 	fmt.Println("Exit.")
 }

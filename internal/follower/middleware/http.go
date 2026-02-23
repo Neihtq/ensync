@@ -25,3 +25,25 @@ func Post(data map[string]string, url string) error {
 
 	return nil
 }
+
+func Delete(baseURL string, param string) error {
+	url := baseURL + "/" + param
+	fmt.Printf("Calling %s\n", url)
+
+	req, err := http.NewRequest(http.MethodDelete, url, nil)
+	if err != nil {
+		return err
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("server returned error status: %d", resp.StatusCode)
+	}
+
+	return nil
+}
