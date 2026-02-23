@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"ensync/internal/grandmaster/subscription"
+	"ensync/internal/grandmaster/follower"
 )
 
 func prepareTestFixtures(t *testing.T) string {
@@ -40,7 +40,7 @@ func TestStreamAudioToAll(t *testing.T) {
 	filePath := "../../../assets/test_file.mp3"
 	urls := []string{serverAddr}
 	mockSourceProvider := MockSourceProvider{}
-	subs := subscription.Subscribers{AudioURLs: urls}
+	subs := follower.Followers{AudioURLs: urls}
 
 	// act
 	audioStreamer := NewAudioStreamer(&subs, 1*time.Nanosecond, &mockSourceProvider)
@@ -59,7 +59,7 @@ func TestStreamAudioToallLoop(t *testing.T) {
 	serverAddr := prepareTestFixtures(t)
 	urls := []string{serverAddr}
 	mockSourceProvider := MockSourceProvider{}
-	subs := subscription.Subscribers{AudioURLs: urls}
+	subs := follower.Followers{AudioURLs: urls}
 	duration := 1 * time.Nanosecond
 
 	ctx, cancel := context.WithCancel(context.Background())

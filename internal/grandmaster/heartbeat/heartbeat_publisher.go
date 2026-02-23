@@ -7,8 +7,8 @@ import (
 	"net"
 	"time"
 
+	"ensync/internal/grandmaster/follower"
 	"ensync/internal/grandmaster/logging"
-	"ensync/internal/grandmaster/subscription"
 )
 
 const (
@@ -18,7 +18,7 @@ const (
 )
 
 type HeartbeatPublisher struct {
-	Subs *subscription.Subscribers
+	Followers *follower.Followers
 }
 
 func SendHeartbeat(url string) {
@@ -44,9 +44,9 @@ func SendHeartbeat(url string) {
 }
 
 func (publisher *HeartbeatPublisher) SendHeartbeatToAll() {
-	publisher.Subs.RLock()
-	defer publisher.Subs.RUnlock()
-	for _, url := range publisher.Subs.HeartbeatURLs {
+	publisher.Followers.RLock()
+	defer publisher.Followers.RUnlock()
+	for _, url := range publisher.Followers.HeartbeatURLs {
 		go SendHeartbeat(url)
 	}
 }

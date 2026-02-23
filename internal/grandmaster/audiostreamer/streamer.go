@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"ensync/internal/grandmaster/clock"
+	"ensync/internal/grandmaster/follower"
 	"ensync/internal/grandmaster/logging"
-	"ensync/internal/grandmaster/subscription"
 
 	"github.com/gammazero/deque"
 )
@@ -27,7 +27,7 @@ type AudioStreamer struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 
-	Subs           *subscription.Subscribers
+	Subs           *follower.Followers
 	Queue          deque.Deque[string] // List of tracks
 	Interval       time.Duration
 	SourceProvider SourceProvider
@@ -35,7 +35,7 @@ type AudioStreamer struct {
 }
 
 func NewAudioStreamer(
-	subs *subscription.Subscribers,
+	subs *follower.Followers,
 	interval time.Duration,
 	sourceProvider SourceProvider,
 ) *AudioStreamer {

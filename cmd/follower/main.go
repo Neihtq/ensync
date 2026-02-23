@@ -26,7 +26,7 @@ func main() {
 
 	mirrorClock := mirrorclock.NewMirrorClock()
 	ipProvider := middleware.RealIPProvider{}
-	endpointProvider := middleware.SubscriptionEndpointProvider{}
+	endpointProvider := middleware.FollowersEndpointProvider{}
 	heartbeatReceiver := heartbeat.NewHeartbeatReceiver(heartbeatPort, ipProvider, mirrorClock)
 
 	fmt.Println("Starting Application.")
