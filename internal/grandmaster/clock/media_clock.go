@@ -17,6 +17,6 @@ func (clock *MediaClock) UpdateMediaTime() {
 	clock.MediaTime = time.Since(clock.StartTime)
 }
 
-func (clock *MediaClock) StampTime(offset time.Duration) time.Duration {
-	return clock.MediaTime + offset
+func (clock *MediaClock) StampTime(offset time.Duration) int64 {
+	return time.Now().UnixNano() + offset.Nanoseconds()
 }
