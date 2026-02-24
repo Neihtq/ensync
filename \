@@ -29,16 +29,14 @@ type AudioStreamer struct {
 
 	Followers      *follower.Followers
 	Queue          deque.Deque[string] // List of tracks
-	Interval       time.Duration
+	LookAhead      time.Duration
 	SourceProvider SourceProvider
 	Clock          clock.MediaClock
-	LookAhead      int64
 }
 
 func NewAudioStreamer(
 	followers *follower.Followers,
-	interval time.Duration,
-	lookAhead int64,
+	lookAhead time.Duration,
 	sourceProvider SourceProvider,
 ) *AudioStreamer {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -46,7 +44,6 @@ func NewAudioStreamer(
 		ctx:            ctx,
 		cancel:         cancel,
 		Followers:      followers,
-		Interval:       interval,
 		LookAhead:      lookAhead,
 		SourceProvider: sourceProvider,
 	}
@@ -65,37 +62,33 @@ func (streamer *AudioStreamer) StreamAudioToAll() {
 	logging.Log(logPrefix, "Stream "+filePath)
 
 	audioSource := streamer.SourceProvider.GetSource(filePath)
-	ticker := time.NewTicker(streamer.Interval)
-	defer ticker.Stop()
 
 	buffer := make([]byte, 3528)
 
 	streamer.Clock.UpdateStartTime()
 	for {
 		streamer.Clock.UpdateMediaTime()
-		if streamer.Clock.GetSentTimeInt64()-streamer.Clock.GetMediaTimeInt64() > streamer.LookAhead {
-			<-ticker.C
+		if streamer.Clock.GetSentTimeInt64()-streamer.Clock.GetMediaTimeInt64() > streamer.LookAhead.Nanoseconds() {
 			continue
 		}
 
+		playAt := streamer.Clock.GetSentTimeInt64()
 		n, err := audioSource.Read(buffer)
 		if n == 0 || err != nil {
 			logging.Log(logPrefix, "Exiting play loop: n="+strconv.Itoa(n)+" err="+err.Error())
 			break
 		}
 
-		playAt := streamer.Clock.GetSentTimeInt64()
 		envelope := make([]byte, headerSize+n)
 		binary.BigEndian.PutUint64(envelope[:headerSize], uint64(playAt))
-		copy(envelope[headerSize:], buffer[:n])
+		copy(envelope[8:], buffer[:n])
 		streamer.Clock.UpdateMediaTime()
 
 		for _, f := range streamer.Followers.Followers {
 			url := f.AudioURL
 			go streamAudioToFollower(envelope, url)
 		}
-		durationSent := int64(n) * 1e9 / (audioSource.SampleRate * audioSource.Channels * 2)
-		streamer.Clock.AddToSentTime(durationSent)
+		streamer.Clock.UpdateSentTime()
 	}
 }
 
