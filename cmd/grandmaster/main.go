@@ -30,8 +30,9 @@ func initializeFixtures() (*follower.Followers, *heartbeat.HeartbeatPublisher, *
 
 	log("Initialize AudioStreamer")
 	interval := 10 * time.Millisecond
+	lookAhead := (200 * time.Millisecond).Nanoseconds()
 	audioProvider := &audiostreamer.AudioProvider{}
-	audioStreamer := audiostreamer.NewAudioStreamer(followers, interval, audioProvider)
+	audioStreamer := audiostreamer.NewAudioStreamer(followers, interval, lookAhead, audioProvider)
 
 	return followers, publisher, audioStreamer
 }

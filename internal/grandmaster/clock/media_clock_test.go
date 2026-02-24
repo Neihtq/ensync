@@ -24,7 +24,7 @@ func TestStampTime(t *testing.T) {
 	offset := 200 * time.Millisecond
 	startTime := time.Now().UnixNano()
 	// act
-	timeStamp := mediaClock.StampTime(offset)
+	timeStamp := mediaClock.StampTime(offset.Nanoseconds())
 
 	// assert
 	expected := startTime + offset.Nanoseconds()
