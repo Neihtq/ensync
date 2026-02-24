@@ -10,7 +10,10 @@ import (
 	"ensync/internal/grandmaster/follower"
 )
 
-const duration = 1 * time.Nanosecond
+const (
+	duration  = 1 * time.Nanosecond
+	lookAhead = int64(10 * time.Second)
+)
 
 func prepareTestFixtures(t *testing.T) string {
 	addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:0")
@@ -46,7 +49,7 @@ func TestStreamAudioToAll(t *testing.T) {
 	followers.Followers[serverAddr] = follow
 
 	// act
-	audioStreamer := NewAudioStreamer(followers, duration, duration.Nanoseconds(), &mockSourceProvider)
+	audioStreamer := NewAudioStreamer(followers, duration, lookAhead, &mockSourceProvider)
 	audioStreamer.AddToQueue(filePath)
 	audioStreamer.StreamAudioToAll()
 
@@ -68,7 +71,7 @@ func TestStreamAudioToAllLoop(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	audioStreamer := NewAudioStreamer(&followers, duration, duration.Nanoseconds(), &mockSourceProvider)
+	audioStreamer := NewAudioStreamer(&followers, duration, lookAhead, &mockSourceProvider)
 	audioStreamer.ctx = ctx
 	audioStreamer.cancel = cancel
 

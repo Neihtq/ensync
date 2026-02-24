@@ -49,6 +49,7 @@ func NewAudioStreamer(
 		Interval:       interval,
 		LookAhead:      lookAhead,
 		SourceProvider: sourceProvider,
+		Clock:          *clock.NewMediaClock(),
 	}
 }
 
@@ -79,6 +80,7 @@ func (streamer *AudioStreamer) StreamAudioToAll() {
 		}
 
 		n, err := audioSource.Read(buffer)
+		logging.Log(logPrefix, "n="+strconv.Itoa(n))
 		if n == 0 || err != nil {
 			logging.Log(logPrefix, "Exiting play loop: n="+strconv.Itoa(n)+" err="+err.Error())
 			break
