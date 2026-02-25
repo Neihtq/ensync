@@ -10,10 +10,14 @@ type MirrorClock struct {
 	mu          sync.Mutex
 	VirtualTime time.Time
 	Offset      time.Duration
+	StartTime   time.Time
 }
 
 func NewMirrorClock() *MirrorClock {
-	return &MirrorClock{VirtualTime: time.Now()}
+	return &MirrorClock{
+		VirtualTime: time.Now(),
+		StartTime:   time.Time{},
+	}
 }
 
 func (clock *MirrorClock) UpdateOffset(ts uint64) {
@@ -30,4 +34,20 @@ func (clock *MirrorClock) Now() time.Time {
 	defer clock.mu.Unlock()
 
 	return time.Now().Add(clock.Offset)
+}
+
+func (clock *MirrorClock) ResetStartTime() {
+	clock.StartTime = time.Time{}
+}
+
+func (clock *MirrorClock) InitStartTime(playAt int64) {
+	clock.StartTime = clock.Now().Add(-time.Duration(playAt))
+}
+
+func (clock *MirrorClock) GetStartTimeInt64() int64 {
+	return clock.StartTime.UnixNano()
+}
+
+func (clock *MirrorClock) GetTargetPlayTime(playAt int64) time.Time {
+	return clock.StartTime.Add(time.Duration(playAt))
 }

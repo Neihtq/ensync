@@ -29,7 +29,7 @@ func (clock *MediaClock) GetSentTimeInt64() int64 {
 }
 
 func (clock *MediaClock) AddToSentTime(durationSent int64) {
-	clock.SentTime = time.Duration(durationSent)
+	clock.SentTime += time.Duration(durationSent)
 }
 
 func (clock *MediaClock) GetMediaTimeInt64() int64 {

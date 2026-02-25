@@ -80,7 +80,6 @@ func (streamer *AudioStreamer) StreamAudioToAll() {
 		}
 
 		n, err := audioSource.Read(buffer)
-		logging.Log(logPrefix, "n="+strconv.Itoa(n))
 		if n == 0 || err != nil {
 			logging.Log(logPrefix, "Exiting play loop: n="+strconv.Itoa(n)+" err="+err.Error())
 			break
@@ -90,7 +89,6 @@ func (streamer *AudioStreamer) StreamAudioToAll() {
 		envelope := make([]byte, headerSize+n)
 		binary.BigEndian.PutUint64(envelope[:headerSize], uint64(playAt))
 		copy(envelope[headerSize:], buffer[:n])
-		streamer.Clock.UpdateMediaTime()
 
 		for _, f := range streamer.Followers.Followers {
 			url := f.AudioURL
