@@ -8,13 +8,20 @@ import (
 	"github.com/hajimehoshi/go-mp3"
 )
 
+type Decoder struct {
+	io.Reader
+	io.Closer
+	SampleRate int64
+	Channels   int64
+}
+
 type SourceProvider interface {
-	GetSource(filePath string) io.ReadCloser
+	GetSource(filePath string) *Decoder
 }
 
 type AudioProvider struct{}
 
-func (provider *AudioProvider) GetSource(filePath string) io.ReadCloser {
+func (provider *AudioProvider) GetSource(filePath string) *Decoder {
 	audioSource, err := os.Open(filePath)
 	if err != nil {
 		panic("Error opening audio source at " + filePath)
@@ -25,18 +32,22 @@ func (provider *AudioProvider) GetSource(filePath string) io.ReadCloser {
 		panic("Error creating mp3 decoder " + err.Error())
 	}
 
-	return &struct {
-		io.Reader
-		io.Closer
-	}{decoder, audioSource}
+	return &Decoder{
+		Reader:     decoder,
+		Closer:     audioSource,
+		SampleRate: int64(decoder.SampleRate()),
+		Channels:   2,
+	}
 }
 
 type MockSourceProvider struct{}
 
-func (provider *MockSourceProvider) GetSource(filePath string) io.ReadCloser {
+func (provider *MockSourceProvider) GetSource(filePath string) *Decoder {
 	reader := strings.NewReader(filePath)
-	return &struct {
-		io.Reader
-		io.Closer
-	}{reader, io.NopCloser(reader)}
+	return &Decoder{
+		Reader:     reader,
+		Closer:     io.NopCloser(reader),
+		SampleRate: 48000,
+		Channels:   2,
+	}
 }
