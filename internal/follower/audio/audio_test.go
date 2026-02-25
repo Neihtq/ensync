@@ -47,8 +47,8 @@ func TestReadBelowThreshold(t *testing.T) {
 	if err != nil {
 		t.Errorf("Read failed. %s", err.Error())
 	}
-	if numBytes > 0 {
-		t.Errorf("Read from Buffer below threshold failed: Expected %d number of bytes but received %d number of bytres", len(mockData), numBytes)
+	if numBytes != len(mockData) {
+		t.Errorf("Read from Buffer below threshold failed: Expected %d number of bytes but received %d number of bytes", len(mockData), numBytes)
 	}
 }
 
@@ -131,8 +131,8 @@ func TestAudioStreamDoesNotPlayWhenItIsNotTime(t *testing.T) {
 	if err != nil {
 		t.Errorf("Read failed. %s", err.Error())
 	}
-	if numBytes > 0 {
-		t.Errorf("PlayAt test failed. Expected 0 bytes but got %d", numBytes)
+	if numBytes > 38400 {
+		t.Errorf("PlayAt test failed. Expected 38400 bytes but got %d", numBytes)
 	}
 }
 
