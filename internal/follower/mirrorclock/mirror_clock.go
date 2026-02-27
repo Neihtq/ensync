@@ -11,6 +11,8 @@ type MirrorClock struct {
 	VirtualTime time.Time
 	Offset      time.Duration
 	StartTime   time.Time
+	NTPOffset   uint64
+	Delay       uint64
 }
 
 func NewMirrorClock() *MirrorClock {
@@ -50,4 +52,18 @@ func (clock *MirrorClock) GetStartTimeInt64() int64 {
 
 func (clock *MirrorClock) GetTargetPlayTime(playAt int64) time.Time {
 	return clock.StartTime.Add(time.Duration(playAt))
+}
+
+func (clock *MirrorClock) SyncTime(timeStamps []uint64) {
+	clock.mu.Lock()
+	defer clock.mu.Unlock()
+	localSendTime, serverReceiveTime, serverSendTime, localReceiveTime := timeStamps[0], timeStamps[1], timeStamps[2], timeStamps[3]
+	clock.NTPOffset = ((serverReceiveTime - localSendTime) + (serverSendTime - localReceiveTime)) / 2
+	clock.Delay = (localReceiveTime - localSendTime) - (serverSendTime - serverReceiveTime)
+}
+
+func (clock *MirrorClock) GetNTPStats() (uint64, uint64) {
+	clock.mu.Lock()
+	defer clock.mu.Unlock()
+	return clock.NTPOffset, clock.Delay
 }
