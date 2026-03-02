@@ -30,3 +30,14 @@ type MockIPProvider struct {
 func (m MockIPProvider) GetIP() net.IP {
 	return m.FakeIP
 }
+
+type NTPAddressProvider struct{}
+
+func (n NTPAddressProvider) GetAddress(port string) string {
+	ipAddr := getOutboundIP("8.8.8.8:80").String()
+	return ipAddr + port
+}
+
+func (n NTPAddressProvider) BuildAddress(url string, port string) string {
+	return url + port
+}
