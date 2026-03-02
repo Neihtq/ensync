@@ -1,3 +1,4 @@
+// Package clocksync implements logic for NTP
 package clocksync
 
 import (
@@ -53,41 +54,41 @@ func (clockSync *ClockSync) SendNTPRequest() error {
 }
 
 func (clockSync *ClockSync) ReceiveNTPPackets(stop chan struct{}) {
-	addr, err := net.ResolveUDPAddr("udp", port)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	conn, err := net.ListenUDP("udp", addr)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer conn.Close()
-
-	clockSync.mu.Lock()
-	clockSync.ListeningAddr = conn.LocalAddr().String()
-	clockSync.mu.Unlock()
-
-	fmt.Println("Listening to server on port ", port)
 	buffer := make([]byte, 24)
 	for {
 		select {
 		case <-stop:
 			return
 		default:
-			numBytes, _, err := conn.ReadFromUDP(buffer)
-			receivedTime := uint64(time.Now().UnixNano())
+			numBytes, _, err := clockSync.Conn.ReadFromUDP(buffer)
+			receivedTime := time.Now().UnixNano()
 			if err != nil {
 				fmt.Println("Error reading:", err)
 				continue
 			}
-			timeStamps := []uint64{}
+			timeStamps := []int64{}
 			for start := 0; start+timeStampSize <= numBytes; start += timeStampSize {
-				ts := binary.BigEndian.Uint64(buffer[start : start+timeStampSize])
+				ts := int64(binary.BigEndian.Uint64(buffer[start : start+timeStampSize]))
 				timeStamps = append(timeStamps, ts)
 			}
 			timeStamps = append(timeStamps, receivedTime)
 			clockSync.Clock.SyncTime(timeStamps)
+		}
+	}
+}
+
+func (clockSync *ClockSync) RunClockSync(interval time.Duration, stop chan struct{}) {
+	go clockSync.ReceiveNTPPackets(stop)
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-stop:
+			fmt.Println("Stopping Clocksync...")
+			return
+		case <-ticker.C:
+			clockSync.SendNTPRequest()
 		}
 	}
 }

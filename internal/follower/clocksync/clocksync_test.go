@@ -59,13 +59,7 @@ func TestReceiveNTPPackets(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	// assert
-	clockSync.mu.Lock()
-	targetAddr := clockSync.ListeningAddr
-	clockSync.mu.Unlock()
-	if targetAddr == "" {
-		t.Fatalf("Target Address not set!")
-	}
-	addr, err := net.ResolveUDPAddr("udp", targetAddr)
+	addr, err := net.ResolveUDPAddr("udp", clockSync.Conn.LocalAddr().String())
 	if err != nil {
 		t.Fatalf("ReceiveNTPPackets failed: Could not resolve address for url %s", serverURL)
 	}
@@ -86,11 +80,8 @@ func TestReceiveNTPPackets(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ReceiveNTPPackets failed: Failed to send test message: %s", err.Error())
 	}
-	ntpOffset, delay := clockSync.Clock.GetNTPStats()
-	if ntpOffset < 10 {
-		t.Fatalf("ReceiveNTPPackets failed: Clock offset should be synced to 0 but is %d", ntpOffset)
-	}
-	if delay < 10 {
-		t.Fatalf("ReceiveNTPPackets failed: Clock delay should be synced to 0 but is %d", delay)
+	ntpOffset := clockSync.Clock.GetNTPOffset()
+	if ntpOffset > 0 {
+		t.Fatalf("ReceiveNTPPackets failed: Clock offset should be negative but is %f", ntpOffset)
 	}
 }

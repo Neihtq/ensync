@@ -9,10 +9,10 @@ import (
 	"time"
 )
 
-const bufferSize = 8
+const timeStampSize = 8
 
-func ExposeNTP(url string, stop chan struct{}) error {
-	addr, err := net.ResolveUDPAddr("udp", url)
+func ExposeNTP(port string, stop chan struct{}) error {
+	addr, err := net.ResolveUDPAddr("udp", port)
 	if err != nil {
 		log.Fatal(err)
 		return err
@@ -25,21 +25,21 @@ func ExposeNTP(url string, stop chan struct{}) error {
 	}
 	defer conn.Close()
 
-	fmt.Println("Clock Sync Service listening on ", url)
+	fmt.Println("Clock Sync Service listening on ", conn.LocalAddr().String())
 
-	buffer := make([]byte, bufferSize)
+	buffer := make([]byte, 24)
 	for {
 		select {
 		case <-stop:
 			return nil
 		default:
 			numBytes, sender, err := conn.ReadFromUDP(buffer)
-			receivedTime := time.Now().UnixNano()
-
 			if err != nil {
 				fmt.Println("Error reading: ", err)
 				continue
 			}
+			receivedTime := time.Now().UnixNano()
+
 			timestamp := binary.BigEndian.Uint64(buffer[:numBytes])
 
 			packet := make([]byte, 24)

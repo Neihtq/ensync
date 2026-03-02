@@ -5,9 +5,10 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"ensync/internal/follower/audio"
-	"ensync/internal/follower/heartbeat"
+	"ensync/internal/follower/clocksync"
 	"ensync/internal/follower/middleware"
 	"ensync/internal/follower/mirrorclock"
 )
@@ -15,6 +16,7 @@ import (
 const (
 	audioPort     = "9000"
 	heartbeatPort = "9001"
+	ntpPort       = ":9090"
 )
 
 func main() {
@@ -25,11 +27,12 @@ func main() {
 
 	mirrorClock := mirrorclock.NewMirrorClock()
 	ipProvider := middleware.RealIPProvider{}
-	endpointProvider := middleware.FollowersEndpointProvider{}
-	heartbeatReceiver := heartbeat.NewHeartbeatReceiver(heartbeatPort, ipProvider, mirrorClock)
 
-	fmt.Println("Starting Application.")
-	go heartbeatReceiver.SubscribeAndExpose(audioPort, stop, endpointProvider)
+	ntpAddressProvider := middleware.NTPAddressProvider{}
+	serverURL := "127.0.0.1"
+	clockSync := clocksync.NewClockSync(mirrorClock, ntpAddressProvider.BuildAddress(serverURL, ntpPort))
+	interval := 10 * time.Millisecond
+	go clockSync.RunClockSync(interval, stop)
 
 	fmt.Println("Launch audio server.")
 	audio.LaunchAudioServer(audioPort, ipProvider, mirrorClock, stop)
@@ -37,11 +40,6 @@ func main() {
 	<-sigChan
 	fmt.Println("\nShutting down...")
 	close(stop)
-
-	err := middleware.Delete(endpointProvider.GetEndpoint(), ipProvider.GetIP().String())
-	if err != nil {
-		fmt.Println("Error: ", err)
-	}
 
 	fmt.Println("Exit.")
 }
