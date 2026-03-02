@@ -63,7 +63,7 @@ func (clock *MirrorClock) SyncTime(timeStamps []int64) {
 func (clock *MirrorClock) UpdateNTPOffset(measuredOffset int64, delay int64) {
 	clock.mu.Lock()
 	defer clock.mu.Unlock()
-	if delay > 50_000_000 {
+	if delay > 5_000_000 {
 		return
 	}
 
