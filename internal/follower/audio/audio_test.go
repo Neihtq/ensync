@@ -159,7 +159,7 @@ func sendTestUDPPacket(t *testing.T, url string, stop chan struct{}) {
 }
 
 func TestLaunchAudioServer(t *testing.T) {
-	port := "9001"
+	port := "9011"
 	ipProvider := middleware.MockIPProvider{FakeIP: []byte{127, 0, 0, 1}}
 	mirrorClock := mirrorclock.NewMirrorClock()
 	stop := make(chan struct{})
