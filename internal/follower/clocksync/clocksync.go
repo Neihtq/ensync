@@ -1,4 +1,4 @@
-// Package clocksync implements logic for NTP
+// Package clocksync follower implements follower logic to perform NTP exchange with the server
 package clocksync
 
 import (
