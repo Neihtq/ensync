@@ -15,8 +15,8 @@ func TestStartService(t *testing.T) {
 	// arrange
 	mirrorClock := mirrorclock.NewMirrorClock()
 	stop := make(chan struct{})
-	audioPort := ":4222"
-	cp := NewControlPlaneService(mirrorClock, audioPort, stop)
+	ntpPort := "4222"
+	cp := NewControlPlaneService(mirrorClock, ntpPort, stop)
 	servicePort := ":42050"
 
 	// act
@@ -29,8 +29,8 @@ func TestStartClockSync(t *testing.T) {
 	// arrange
 	mirrorClock := mirrorclock.NewMirrorClock()
 	stop := make(chan struct{})
-	audioPort := ":42051"
-	cp := NewControlPlaneService(mirrorClock, audioPort, stop)
+	ntpPort := ":42051"
+	cp := NewControlPlaneService(mirrorClock, ntpPort, stop)
 
 	port := ":42052"
 	ipAddress := "127.0.0.1"
@@ -52,8 +52,8 @@ func TestStartClockSync(t *testing.T) {
 	}
 
 	ipProvider := middleware.RealIPProvider{}
-	outboundAddr := ipProvider.GetIP().String()
-	expected := `{"address":"` + outboundAddr + `","port":"` + cp.AudioPort + `"}`
+	outboundAddr := ipProvider.GetIP().String() + cp.ClockSyncPort
+	expected := `{"address":"` + outboundAddr + `"}`
 	if !strings.Contains(writer.Body.String(), expected) {
 		t.Errorf("Response body mismatch. Expected %s but got %s", expected, writer.Body.String())
 	}
