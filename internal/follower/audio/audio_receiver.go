@@ -11,11 +11,12 @@ import (
 	"ensync/internal/follower/mirrorclock"
 )
 
-const headerSize = 8
+const headerSize = 16
 
 func expose(
 	url string,
 	audioStream *AudioStream,
+	clock *mirrorclock.MirrorClock,
 	stop chan struct{},
 ) {
 	addr, err := net.ResolveUDPAddr("udp", url)
@@ -44,9 +45,13 @@ func expose(
 			return
 		}
 
-		timestamp := binary.BigEndian.Uint64(buffer[:headerSize])
-		playAt := int64(timestamp)
+		absoluteStartTime := int64(binary.BigEndian.Uint64(buffer[:8]))
+		playAt := int64(binary.BigEndian.Uint64(buffer[8:16]))
 		audio := buffer[headerSize:numBytes]
+
+		if clock.GetStartTime().IsZero() {
+			clock.InitStartTime(absoluteStartTime)
+		}
 
 		audioStream.WriteToBuffer(audio, playAt)
 	}
@@ -73,7 +78,7 @@ func LaunchAudioServer(
 
 	localIPAddress := ipProvider.GetIP().String()
 	url := localIPAddress + ":" + port
-	go expose(url, audioStream, stop)
+	go expose(url, audioStream, clock, stop)
 
 	go checkPlayerError(player, 1*time.Second)
 }
