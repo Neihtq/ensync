@@ -5,10 +5,9 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"ensync/internal/follower/audio"
-	"ensync/internal/follower/clocksync"
+	"ensync/internal/follower/controlplane"
 	"ensync/internal/follower/middleware"
 	"ensync/internal/follower/mirrorclock"
 )
@@ -28,11 +27,9 @@ func main() {
 	mirrorClock := mirrorclock.NewMirrorClock()
 	ipProvider := middleware.RealIPProvider{}
 
-	ntpAddressProvider := middleware.NTPAddressProvider{}
-	serverURL := "127.0.0.1"
-	clockSync := clocksync.NewClockSync(mirrorClock, ntpAddressProvider.BuildAddress(serverURL, ntpPort))
-	interval := 100 * time.Millisecond
-	go clockSync.RunClockSync(interval, stop)
+	fmt.Println("Start ControlPlane")
+	cp := controlplane.NewControlPlaneService(mirrorClock, stop)
+	go cp.StartService(ntpPort)
 
 	fmt.Println("Launch audio server.")
 	audio.LaunchAudioServer(audioPort, ipProvider, mirrorClock, stop)

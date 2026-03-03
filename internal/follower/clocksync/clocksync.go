@@ -22,6 +22,7 @@ type ClockSync struct {
 	Clock         *mirrorclock.MirrorClock
 	Conn          *net.UDPConn
 	ListeningAddr string
+	Interval      time.Duration
 }
 
 func NewClockSync(clock *mirrorclock.MirrorClock, serverURL string) *ClockSync {
@@ -35,8 +36,9 @@ func NewClockSync(clock *mirrorclock.MirrorClock, serverURL string) *ClockSync {
 	}
 
 	return &ClockSync{
-		Clock: clock,
-		Conn:  conn,
+		Clock:    clock,
+		Conn:     conn,
+		Interval: 100 * time.Millisecond,
 	}
 }
 
@@ -77,9 +79,9 @@ func (clockSync *ClockSync) ReceiveNTPPackets(stop chan struct{}) {
 	}
 }
 
-func (clockSync *ClockSync) RunClockSync(interval time.Duration, stop chan struct{}) {
+func (clockSync *ClockSync) RunClockSync(stop chan struct{}) {
 	go clockSync.ReceiveNTPPackets(stop)
-	ticker := time.NewTicker(interval)
+	ticker := time.NewTicker(clockSync.Interval)
 	defer ticker.Stop()
 
 	for {
@@ -89,6 +91,8 @@ func (clockSync *ClockSync) RunClockSync(interval time.Duration, stop chan struc
 			return
 		case <-ticker.C:
 			clockSync.SendNTPRequest()
+			offset := clockSync.Clock.GetOffset()
+			fmt.Println("Offset: ", offset)
 		}
 	}
 }
