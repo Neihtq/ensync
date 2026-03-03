@@ -31,7 +31,7 @@ func main() {
 	ntpAddressProvider := middleware.NTPAddressProvider{}
 	serverURL := "127.0.0.1"
 	clockSync := clocksync.NewClockSync(mirrorClock, ntpAddressProvider.BuildAddress(serverURL, ntpPort))
-	interval := 10 * time.Millisecond
+	interval := 100 * time.Millisecond
 	go clockSync.RunClockSync(interval, stop)
 
 	fmt.Println("Launch audio server.")
