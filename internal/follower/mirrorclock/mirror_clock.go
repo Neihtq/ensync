@@ -7,45 +7,37 @@ import (
 )
 
 type MirrorClock struct {
-	mu          sync.Mutex
-	VirtualTime time.Time
-	Offset      time.Duration
-	StartTime   time.Time
-	NTPOffset   float64
+	mu        sync.Mutex
+	StartTime time.Time
+	Offset    float64
 }
 
 func NewMirrorClock() *MirrorClock {
 	return &MirrorClock{
-		VirtualTime: time.Now(),
-		StartTime:   time.Time{},
+		StartTime: time.Time{},
 	}
-}
-
-func (clock *MirrorClock) UpdateOffset(ts uint64) {
-	clock.mu.Lock()
-	defer clock.mu.Unlock()
-
-	timestamp := time.Unix(0, int64(ts))
-	clock.Offset = time.Until(timestamp)
-	clock.VirtualTime = time.Now().Add(clock.Offset)
 }
 
 func (clock *MirrorClock) Now() time.Time {
 	clock.mu.Lock()
 	defer clock.mu.Unlock()
 
-	return time.Now().Add(clock.Offset)
+	return time.Unix(0, time.Now().UnixNano()+int64(clock.Offset))
 }
 
 func (clock *MirrorClock) ResetStartTime() {
 	clock.StartTime = time.Time{}
 }
 
-func (clock *MirrorClock) InitStartTime(playAt int64) {
-	clock.StartTime = clock.Now().Add(-time.Duration(playAt))
+func (clock *MirrorClock) InitStartTime(targetTime int64) {
+	clock.mu.Lock()
+	defer clock.mu.Unlock()
+	clock.StartTime = time.Unix(0, targetTime)
 }
 
 func (clock *MirrorClock) GetStartTimeInt64() int64 {
+	clock.mu.Lock()
+	defer clock.mu.Unlock()
 	return clock.StartTime.UnixNano()
 }
 
@@ -57,10 +49,10 @@ func (clock *MirrorClock) SyncTime(timeStamps []int64) {
 	localSendTime, serverReceiveTime, serverSendTime, localReceiveTime := timeStamps[0], timeStamps[1], timeStamps[2], timeStamps[3]
 	offset := ((serverReceiveTime - localSendTime) + (serverSendTime - localReceiveTime)) / 2
 	delay := (localReceiveTime - localSendTime) - (serverSendTime - serverReceiveTime)
-	clock.UpdateNTPOffset(offset, delay)
+	clock.UpdateOffset(offset, delay)
 }
 
-func (clock *MirrorClock) UpdateNTPOffset(measuredOffset int64, delay int64) {
+func (clock *MirrorClock) UpdateOffset(measuredOffset int64, delay int64) {
 	clock.mu.Lock()
 	defer clock.mu.Unlock()
 	if delay > 5_000_000 {
@@ -68,11 +60,18 @@ func (clock *MirrorClock) UpdateNTPOffset(measuredOffset int64, delay int64) {
 	}
 
 	alpha := 0.02
-	clock.NTPOffset = clock.NTPOffset*(1-alpha) + float64(measuredOffset)*alpha
+	clock.Offset = clock.Offset*(1-alpha) + float64(measuredOffset)*alpha
 }
 
-func (clock *MirrorClock) GetNTPOffset() float64 {
+func (clock *MirrorClock) GetOffset() float64 {
 	clock.mu.Lock()
 	defer clock.mu.Unlock()
-	return clock.NTPOffset
+	return clock.Offset
+}
+
+func (clock *MirrorClock) GetStartTime() time.Time {
+	clock.mu.Lock()
+	defer clock.mu.Unlock()
+
+	return clock.StartTime
 }

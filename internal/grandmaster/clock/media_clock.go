@@ -13,15 +13,17 @@ type MediaClock struct {
 
 func NewMediaClock() *MediaClock {
 	return &MediaClock{
-		StartTime: time.Now(),
+		StartTime: time.Time{},
 		MediaTime: 0,
 		SentTime:  0,
 		IsPlaying: false,
 	}
 }
 
-func (clock *MediaClock) UpdateStartTime() {
-	clock.StartTime = time.Now()
+func (clock *MediaClock) UpdateStartTime(lookAhead int) {
+	if clock.StartTime.IsZero() {
+		clock.StartTime = time.Now().Add(time.Duration(lookAhead) * time.Second)
+	}
 }
 
 func (clock *MediaClock) GetSentTimeInt64() int64 {
@@ -42,4 +44,8 @@ func (clock *MediaClock) UpdateMediaTime() {
 
 func (clock *MediaClock) StampTime(offset int64) int64 {
 	return time.Now().UnixNano() + offset
+}
+
+func (clock *MediaClock) GetStartTimeInt64() int64 {
+	return clock.StartTime.UnixNano()
 }

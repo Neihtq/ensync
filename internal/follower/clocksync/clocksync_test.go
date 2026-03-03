@@ -80,7 +80,7 @@ func TestReceiveNTPPackets(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ReceiveNTPPackets failed: Failed to send test message: %s", err.Error())
 	}
-	ntpOffset := clockSync.Clock.GetNTPOffset()
+	ntpOffset := clockSync.Clock.GetOffset()
 	if ntpOffset > 0 {
 		t.Fatalf("ReceiveNTPPackets failed: Clock offset should be negative but is %f", ntpOffset)
 	}

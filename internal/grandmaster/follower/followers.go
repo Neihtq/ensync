@@ -3,6 +3,8 @@ package follower
 
 import (
 	"encoding/json"
+	"log"
+	"net"
 	"net/http"
 	"sync"
 
@@ -24,6 +26,24 @@ type removeFollowersRequest struct {
 type Follower struct {
 	HeartbeatURL string
 	AudioURL     string
+	Conn         *net.UDPConn
+}
+
+func (f *Follower) InitConnection() {
+	addr, err := net.ResolveUDPAddr("udp", f.AudioURL)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	conn, err := net.DialUDP("udp", nil, addr)
+	if err != nil {
+		log.Fatal(err)
+	}
+	f.Conn = conn
+}
+
+func (f *Follower) GetConnection() *net.UDPConn {
+	return f.Conn
 }
 
 func NewFollower(heartbeatURL string, audioURL string) Follower {
