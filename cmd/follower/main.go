@@ -15,7 +15,6 @@ import (
 const (
 	audioPort = "9000"
 	cpPort    = ":9001"
-	ntpPort   = ":9090"
 )
 
 func main() {
@@ -28,7 +27,7 @@ func main() {
 	ipProvider := middleware.RealIPProvider{}
 
 	fmt.Println("Start ControlPlane")
-	cp := controlplane.NewControlPlaneService(mirrorClock, ntpPort, stop)
+	cp := controlplane.NewControlPlaneService(mirrorClock, audioPort, stop)
 	go cp.StartService(cpPort)
 
 	fmt.Println("Launch audio server.")
