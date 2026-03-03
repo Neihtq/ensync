@@ -13,9 +13,9 @@ import (
 )
 
 const (
-	audioPort     = "9000"
-	heartbeatPort = "9001"
-	ntpPort       = ":9090"
+	audioPort = "9000"
+	cpPort    = ":9001"
+	ntpPort   = ":9090"
 )
 
 func main() {
@@ -28,8 +28,8 @@ func main() {
 	ipProvider := middleware.RealIPProvider{}
 
 	fmt.Println("Start ControlPlane")
-	cp := controlplane.NewControlPlaneService(mirrorClock, stop)
-	go cp.StartService(ntpPort)
+	cp := controlplane.NewControlPlaneService(mirrorClock, ntpPort, stop)
+	go cp.StartService(cpPort)
 
 	fmt.Println("Launch audio server.")
 	audio.LaunchAudioServer(audioPort, ipProvider, mirrorClock, stop)

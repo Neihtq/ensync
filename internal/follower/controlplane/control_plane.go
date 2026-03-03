@@ -7,24 +7,26 @@ import (
 	"net/http"
 
 	"ensync/internal/follower/clocksync"
+	"ensync/internal/follower/middleware"
 	"ensync/internal/follower/mirrorclock"
 )
 
 type ConnectionsPOSTRequest struct {
-	IPAddress string `json:"address"`
-	Port      string `json:"port"`
+	Address string `json:"address"`
 }
 
 type ControlPlaneService struct {
-	Clock     *mirrorclock.MirrorClock
-	ClockSync *clocksync.ClockSync
-	stop      chan struct{}
+	Clock         *mirrorclock.MirrorClock
+	ClockSync     *clocksync.ClockSync
+	ClockSyncPort string
+	stop          chan struct{}
 }
 
-func NewControlPlaneService(clock *mirrorclock.MirrorClock, stop chan struct{}) *ControlPlaneService {
+func NewControlPlaneService(clock *mirrorclock.MirrorClock, ntpPort string, stop chan struct{}) *ControlPlaneService {
 	return &ControlPlaneService{
-		Clock: clock,
-		stop:  stop,
+		Clock:         clock,
+		ClockSyncPort: ntpPort,
+		stop:          stop,
 	}
 }
 
@@ -35,17 +37,22 @@ func (cp *ControlPlaneService) StartClockSync(writer http.ResponseWriter, reques
 		http.Error(writer, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
-	ipAddress := req.IPAddress
-	port := req.Port
-	fmt.Println("IpAddress, Port", ipAddress, port)
-	if ipAddress == "" || port == "" {
+	address := req.Address
+	if address == "" {
 		return
 	}
 
-	fullAddress := ipAddress + ":" + port
-	cp.ClockSync = clocksync.NewClockSync(cp.Clock, fullAddress)
+	cp.ClockSync = clocksync.NewClockSync(cp.Clock, address)
 	go cp.ClockSync.RunClockSync(cp.stop)
-	fmt.Println("Launched ClockSync service to ", ipAddress)
+	fmt.Println("Launched ClockSync service to ", address)
+
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(http.StatusCreated)
+
+	ipProvider := middleware.RealIPProvider{}
+	outboundAddr := ipProvider.GetIP().String() + cp.ClockSyncPort
+	response := map[string]string{"address": outboundAddr}
+	json.NewEncoder(writer).Encode(response)
 }
 
 func (cp *ControlPlaneService) StartService(port string) {
