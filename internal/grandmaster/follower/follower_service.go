@@ -8,20 +8,20 @@ import (
 
 const logPrefix = "[FollowerService]"
 
-func log(message string) {
+func logMessage(message string) {
 	logging.Log(logPrefix, message)
 }
 
 func FollowerService(followers *Followers, port string) {
-	log("Starting FollowerService")
+	logMessage("Starting FollowerService")
 	mux := http.NewServeMux()
 
-	log("Initialize '/followers' endpoint")
+	logMessage("Initialize '/followers' endpoint")
 	mux.HandleFunc("POST /followers", followers.AddFollower)
 
-	log("Initialize '/followers' endpoint")
+	logMessage("Initialize '/followers' endpoint")
 	mux.HandleFunc("DELETE /followers/{address}", followers.RemoveFollower)
 
-	log("Listening on port " + port)
+	logMessage("Listening on port " + port)
 	http.ListenAndServe(port, mux)
 }

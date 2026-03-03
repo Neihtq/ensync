@@ -182,7 +182,7 @@ func TestExpose(t *testing.T) {
 	stop := make(chan struct{})
 
 	// act
-	go expose(address, audioStream, stop)
+	go expose(address, audioStream, mirrorClock, stop)
 	time.Sleep(100 * time.Millisecond)
 
 	sendTestUDPPacket(t, address, stop)

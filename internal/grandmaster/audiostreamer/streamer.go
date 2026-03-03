@@ -4,8 +4,6 @@ package audiostreamer
 import (
 	"context"
 	"encoding/binary"
-	"log"
-	"net"
 	"strconv"
 	"sync"
 	"time"
@@ -19,7 +17,7 @@ import (
 
 const (
 	logPrefix  = "[AudioStreamer]"
-	headerSize = 8
+	headerSize = 16
 )
 
 type AudioStreamer struct {
@@ -71,7 +69,6 @@ func (streamer *AudioStreamer) StreamAudioToAll() {
 
 	buffer := make([]byte, 3528)
 
-	streamer.Clock.UpdateStartTime()
 	for {
 		streamer.Clock.UpdateMediaTime()
 		if streamer.Clock.GetSentTimeInt64()-streamer.Clock.GetMediaTimeInt64() > streamer.LookAhead {
@@ -85,32 +82,26 @@ func (streamer *AudioStreamer) StreamAudioToAll() {
 			break
 		}
 
+		absoluteStartTime := streamer.Clock.GetStartTimeInt64()
 		playAt := streamer.Clock.GetSentTimeInt64()
 		envelope := make([]byte, headerSize+n)
-		binary.BigEndian.PutUint64(envelope[:headerSize], uint64(playAt))
+		binary.BigEndian.PutUint64(envelope[0:8], uint64(absoluteStartTime))
+		binary.BigEndian.PutUint64(envelope[8:16], uint64(playAt))
 		copy(envelope[headerSize:], buffer[:n])
 
 		for _, f := range streamer.Followers.Followers {
-			url := f.AudioURL
-			go streamAudioToFollower(envelope, url)
+			streamAudioToFollower(envelope, f)
 		}
 		durationSent := int64(n) * 1e9 / (audioSource.SampleRate * audioSource.Channels * 2)
 		streamer.Clock.AddToSentTime(durationSent)
 	}
 }
 
-func streamAudioToFollower(buffer []byte, url string) {
-	addr, err := net.ResolveUDPAddr("udp", url)
-	if err != nil {
-		log.Fatal(err)
+func streamAudioToFollower(buffer []byte, follower follower.Follower) {
+	if follower.Conn == nil {
+		follower.InitConnection()
 	}
-
-	conn, err := net.DialUDP("udp", nil, addr)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer conn.Close()
-
+	conn := follower.GetConnection()
 	conn.Write(buffer)
 }
 
@@ -127,6 +118,8 @@ func (streamer *AudioStreamer) StreamAudioToAllLoop(sleepDuration time.Duration,
 				time.Sleep(sleepDuration)
 				continue
 			}
+			streamer.Clock = *clock.NewMediaClock()
+			streamer.Clock.UpdateStartTime(int(streamer.LookAhead))
 			streamer.mu.Unlock()
 			streamer.StreamAudioToAll()
 		}
