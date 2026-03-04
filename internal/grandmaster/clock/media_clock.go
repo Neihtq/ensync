@@ -22,7 +22,7 @@ func NewMediaClock() *MediaClock {
 
 func (clock *MediaClock) UpdateStartTime(lookAhead int) {
 	if clock.StartTime.IsZero() {
-		clock.StartTime = time.Now().Add(time.Duration(lookAhead) * time.Second)
+		clock.StartTime = time.Now().Add(time.Duration(lookAhead))
 	}
 }
 
