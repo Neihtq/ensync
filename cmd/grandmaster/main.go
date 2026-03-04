@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -36,28 +37,30 @@ func initializeFixtures() (*follower.Followers, *audiostreamer.AudioStreamer) {
 }
 
 func main() {
-	// followers, audioStreamer := initializeFixtures()
+	followers, audioStreamer := initializeFixtures()
 	stop := make(chan struct{})
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
-	// go follower.FollowerService(followers, followerServicePort)
-
 	interval := 100 * time.Millisecond
+
+	log("Subscribe Followers")
+	cpURL := "127.0.0.1:9001/connections"
+	follower.SubscribeFollower(followers, cpURL, ntpPort)
 
 	log("Start NTP service")
 	go clocksync.ExposeNTP(ntpPort, stop)
 
 	log("Start AudioStreamLoop with sending interval " + interval.String())
-	// go audioStreamer.StreamAudioToAllLoop(interval, stop)
+	go audioStreamer.StreamAudioToAllLoop(interval, stop)
 
-	// fmt.Println("Continue? [y]es")
-	// var input string
-	// fmt.Scan(&input)
-	// if input == "y" {
-	// 	filePath := "./assets/test_audio.mp3"
-	// 	audioStreamer.AddToQueue(filePath)
-	// }
+	fmt.Println("Continue? [y]es")
+	var input string
+	fmt.Scan(&input)
+	if input == "y" {
+		filePath := "./assets/test_audio.mp3"
+		audioStreamer.AddToQueue(filePath)
+	}
 
 	<-sigChan
 	log("Shutting down...")

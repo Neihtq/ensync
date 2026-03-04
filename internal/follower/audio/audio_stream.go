@@ -20,7 +20,6 @@ type AudioStream struct {
 	bufferSize  int
 	isBuffering bool
 	clock       *mirrorclock.MirrorClock
-	lastPlayAt  int64
 }
 
 func NewAudioStream(clock *mirrorclock.MirrorClock) *AudioStream {
@@ -48,6 +47,15 @@ func (stream *AudioStream) Read(playBuffer []byte) (int, error) {
 	const threshold = 192000
 	stream.mu.Lock()
 	defer stream.mu.Unlock()
+	const startupBytes = 26460
+
+	if stream.isBuffering {
+		if stream.bufferSize < startupBytes {
+			zero(playBuffer)
+			return len(playBuffer), nil
+		}
+		stream.isBuffering = false
+	}
 
 	if stream.chunks.Len() == 0 {
 		zero(playBuffer)
@@ -56,7 +64,9 @@ func (stream *AudioStream) Read(playBuffer []byte) (int, error) {
 
 	targetChunk := stream.chunks.Front()
 	startTime := stream.clock.GetStartTime()
+
 	if startTime.IsZero() {
+		stream.isBuffering = true
 		zero(playBuffer)
 		return len(playBuffer), nil
 	}
@@ -72,10 +82,10 @@ func (stream *AudioStream) Read(playBuffer []byte) (int, error) {
 	}
 
 	// too late --> drop chunk
-	if drift > 20*time.Millisecond {
+	if drift > 200*time.Millisecond {
 		stream.chunks.PopFront()
 		stream.bufferSize -= len(targetChunk.data)
-		return 0, nil
+		return len(playBuffer), nil
 	}
 
 	// play

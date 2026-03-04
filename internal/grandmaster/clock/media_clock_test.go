@@ -43,9 +43,9 @@ func TestUpdateStartTime(t *testing.T) {
 
 	// assert
 	currTime := time.Now()
-	threshold := 2
+	threshold := 2 * time.Second
 	diff := mediaClock.StartTime.Sub(currTime)
-	if int(diff.Nanoseconds()) <= threshold {
+	if diff > threshold {
 		t.Fatalf("UpdateStartTime failed: Expected diff to be less than %d but was %d (timeNow + lookAhead)", threshold, diff)
 	}
 }

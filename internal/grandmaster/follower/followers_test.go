@@ -1,68 +1,47 @@
 package follower
 
 import (
-	"bytes"
-	"net/http"
-	"net/http/httptest"
 	"testing"
+	"time"
+
+	"ensync/internal/follower/controlplane"
+	"ensync/internal/follower/mirrorclock"
 )
 
-func TestAddFollowerAddsFollowerWithURLs(t *testing.T) {
+func TestSubscribeFollower(t *testing.T) {
 	// arrange
+	mirrorClock := mirrorclock.NewMirrorClock()
+	stop := make(chan struct{})
+
+	audioPort := ":4222"
+	cp := controlplane.NewControlPlaneService(mirrorClock, audioPort, stop)
+	cpPort := ":7777"
+
+	go cp.StartService(cpPort)
+	time.Sleep(20 * time.Millisecond)
+
 	followers := NewFollowers()
-
-	address := "127.0.0.1"
-	heartbeatPort := "5000"
-	heartbeatURL := address + ":" + heartbeatPort
-	audioPort := "5001"
-	audioURL := address + ":" + audioPort
-
-	jsonBody := []byte(`{"address": "` + address + `", "heartbeatPort": "` + heartbeatPort + `", "audioPort": "` + audioPort + `"}`)
-	request := httptest.NewRequest(http.MethodPost, "/followers", bytes.NewBuffer(jsonBody))
-	request.Header.Set("Content-Type", "application/json")
-	writer := httptest.NewRecorder()
+	endpoint := "/connections"
+	url := "127.0.0.1"
+	ntpPort := ":9111"
 
 	// act
-	followers.AddFollower(writer, request)
+	err := SubscribeFollower(followers, url+cpPort+endpoint, ntpPort)
+	close(stop)
 
 	// assert
-	if writer.Code != http.StatusCreated && writer.Code != http.StatusOK {
-		t.Errorf("Expected status 201/200, got %d", writer.Code)
+	if err != nil {
+		t.Errorf("Error subscribing follower: %s", err.Error())
 	}
-	if len(followers.Followers) != 1 {
-		t.Error("Expected one Followers. But got: %u", followers.Followers)
+
+	if len(followers.Followers) == 0 {
+		t.Errorf("0 registered Followers.")
 	}
-	if followers.Followers[address].HeartbeatURL != heartbeatURL {
-		t.Error("Expected HeartbeatUrl to be "+heartbeatURL+". Got %s instead", heartbeatURL, followers.Followers[address].HeartbeatURL)
-	}
-	if followers.Followers[address].AudioURL != audioURL {
-		t.Error("Expected AudioUrl to be "+audioURL+". Got %s instead", audioURL, followers.Followers[address].AudioURL)
-	}
-}
 
-func TestRemoveFollowerRemoveFollower(t *testing.T) {
-	// arrange
-	followers := NewFollowers()
-
-	address := "127.0.0.1"
-	heartbeatPort := "5000"
-	heartbeatURL := address + ":" + heartbeatPort
-	audioPort := "5001"
-	audioURL := address + ":" + audioPort
-	followers.Followers[address] = NewFollower(heartbeatURL, audioURL)
-
-	request := httptest.NewRequest(http.MethodDelete, "/followers/"+address, nil)
-	request.SetPathValue("address", address)
-	writer := httptest.NewRecorder()
-
-	// act
-	followers.RemoveFollower(writer, request)
-
-	// assert
-	if writer.Code != http.StatusNoContent {
-		t.Errorf("Expected status 204, got %d", writer.Code)
-	}
-	if len(followers.Followers) > 0 {
-		t.Errorf("Expected no Followers. But got: %v", followers.Followers)
+	ipAddr := getOutboundIP().String()
+	expected := ipAddr + audioPort
+	actual := followers.Followers[0].AudioURL
+	if followers.Followers[0].AudioURL != expected {
+		t.Errorf("Expected registered follower AudioURL %s but was %s", expected, actual)
 	}
 }

@@ -100,7 +100,9 @@ func TestAudioStreamHasEmptyBufferAgain(t *testing.T) {
 	mockBuffer := make([]byte, len(mockData))
 
 	// empty buffer and flip isBuffering flag again
+	fmt.Println(len(mockBuffer))
 	audioStream.Read(mockBuffer)
+	fmt.Println(len(mockBuffer))
 
 	// act
 	_, err := audioStream.Read(mockBuffer)
@@ -109,7 +111,7 @@ func TestAudioStreamHasEmptyBufferAgain(t *testing.T) {
 		t.Errorf("Read failed. %s", err.Error())
 	}
 	if !audioStream.isBuffering {
-		t.Errorf("Test Audio stream has emptie buffer failed: Expected isBuffering to be true but was %v", audioStream.isBuffering)
+		t.Errorf("Test Audio stream has empty buffer again failed: Expected isBuffering to be true but was %v", audioStream.isBuffering)
 	}
 }
 
@@ -159,7 +161,7 @@ func sendTestUDPPacket(t *testing.T, url string, stop chan struct{}) {
 }
 
 func TestLaunchAudioServer(t *testing.T) {
-	port := "9011"
+	port := ":9011"
 	ipProvider := middleware.MockIPProvider{FakeIP: []byte{127, 0, 0, 1}}
 	mirrorClock := mirrorclock.NewMirrorClock()
 	stop := make(chan struct{})
@@ -167,7 +169,7 @@ func TestLaunchAudioServer(t *testing.T) {
 	go LaunchAudioServer(port, ipProvider, mirrorClock, stop)
 	time.Sleep(100 * time.Millisecond)
 
-	address := ipProvider.GetIP().String() + ":" + port
+	address := ipProvider.GetIP().String() + port
 
 	sendTestUDPPacket(t, address, stop)
 }
