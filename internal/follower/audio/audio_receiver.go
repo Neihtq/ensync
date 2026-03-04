@@ -77,7 +77,7 @@ func LaunchAudioServer(
 	fmt.Println("Context {}, Player {}", context, player)
 
 	localIPAddress := ipProvider.GetIP().String()
-	url := localIPAddress + ":" + port
+	url := localIPAddress + port
 	go expose(url, audioStream, clock, stop)
 
 	go checkPlayerError(player, 1*time.Second)

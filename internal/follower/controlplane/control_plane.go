@@ -16,17 +16,17 @@ type ConnectionsPOSTRequest struct {
 }
 
 type ControlPlaneService struct {
-	Clock         *mirrorclock.MirrorClock
-	ClockSync     *clocksync.ClockSync
-	ClockSyncPort string
-	stop          chan struct{}
+	Clock     *mirrorclock.MirrorClock
+	ClockSync *clocksync.ClockSync
+	AudioPort string
+	stop      chan struct{}
 }
 
-func NewControlPlaneService(clock *mirrorclock.MirrorClock, ntpPort string, stop chan struct{}) *ControlPlaneService {
+func NewControlPlaneService(clock *mirrorclock.MirrorClock, audioPort string, stop chan struct{}) *ControlPlaneService {
 	return &ControlPlaneService{
-		Clock:         clock,
-		ClockSyncPort: ntpPort,
-		stop:          stop,
+		Clock:     clock,
+		AudioPort: audioPort,
+		stop:      stop,
 	}
 }
 
@@ -53,7 +53,7 @@ func (cp *ControlPlaneService) StartClockSync(writer http.ResponseWriter, reques
 	writer.WriteHeader(http.StatusCreated)
 
 	ipProvider := middleware.RealIPProvider{}
-	outboundAddr := ipProvider.GetIP().String() + cp.ClockSyncPort
+	outboundAddr := ipProvider.GetIP().String() + cp.AudioPort
 	response := map[string]string{"address": outboundAddr}
 	json.NewEncoder(writer).Encode(response)
 }
