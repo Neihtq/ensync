@@ -33,7 +33,6 @@ func NewControlPlaneService(clock *mirrorclock.MirrorClock, ntpPort string, stop
 func (cp *ControlPlaneService) StartClockSync(writer http.ResponseWriter, request *http.Request) {
 	var req ConnectionsPOSTRequest
 	err := json.NewDecoder(request.Body).Decode(&req)
-	fmt.Println("RECEIVED REQUEST")
 	if err != nil {
 		fmt.Println("invalid JSON")
 		http.Error(writer, "Invalid JSON", http.StatusBadRequest)
@@ -63,9 +62,7 @@ func (cp *ControlPlaneService) StartService(port string) {
 	fmt.Println("Starting ControlPlane")
 	mux := http.NewServeMux()
 
-	fmt.Println("EXPOSE ENDPOINT ON PORT", port)
 	mux.HandleFunc("POST /connections", cp.StartClockSync)
 
-	fmt.Println("LISTEN AND SERVER ON PORT", port)
 	http.ListenAndServe(port, mux)
 }
