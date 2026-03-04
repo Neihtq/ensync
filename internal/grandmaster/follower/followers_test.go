@@ -18,7 +18,7 @@ func TestSubscribeFollower(t *testing.T) {
 	cpPort := ":7777"
 
 	go cp.StartService(cpPort)
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(20 * time.Millisecond)
 
 	followers := NewFollowers()
 	endpoint := "/connections"

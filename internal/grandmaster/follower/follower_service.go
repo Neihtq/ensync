@@ -28,7 +28,7 @@ func getOutboundIP() net.IP {
 }
 
 func SubscribeFollower(followers *Followers, url string, ntpPort string) error {
-	logMessage("Subscribing Follower: URL=" + url)
+	logMessage("Calling Follower ControlPlane: URL=" + url)
 	ipAddr := getOutboundIP()
 	addr := ipAddr.String() + ntpPort
 
@@ -52,6 +52,7 @@ func SubscribeFollower(followers *Followers, url string, ntpPort string) error {
 	if err != nil {
 		return fmt.Errorf("server returned invalid JSON")
 	}
+	logMessage("Register follower " + result.Address)
 	followers.RegisterFollower(result.Address)
 
 	return nil
