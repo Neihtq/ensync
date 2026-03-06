@@ -10,7 +10,7 @@ import (
 
 func ExposeMDNS(port int, info []string) (*mdns.Server, error) {
 	host, _ := os.Hostname()
-	service, err := mdns.NewMDNSService(host, "_ensync._tcp", "", "", port, nil, info)
+	service, err := mdns.NewMDNSService(host, "_ensync._tcp.", "", "", port, nil, info)
 	if err != nil {
 		fmt.Println("Failed mDNS Service initialization ", err.Error())
 		return nil, err
