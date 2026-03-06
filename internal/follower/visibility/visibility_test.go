@@ -15,6 +15,7 @@ func TestExposeMDNS(t *testing.T) {
 	// act
 	server := ExposeMDNS(port, info)
 	defer server.Shutdown()
+	time.Sleep(10 * time.Millisecond)
 
 	// assert
 	entriesCh := make(chan *mdns.ServiceEntry, 1)
