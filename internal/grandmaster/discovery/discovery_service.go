@@ -33,11 +33,16 @@ func (ds *DiscoveryService) Discover() {
 
 func (ds *DiscoveryService) ScanForServers(entriesCh chan *mdns.ServiceEntry) {
 	for {
-		params := mdns.DefaultParams(mdnsName)
-		params.Entries = entriesCh
-		params.DisableIPv6 = true
-		params.Timeout = 2 * time.Second
+		params := &mdns.QueryParam{
+			Service:             mdnsName,
+			Domain:              "local",
+			Timeout:             2 * time.Second,
+			Entries:             entriesCh,
+			WantUnicastResponse: false,
+			DisableIPv6:         false,
+		}
 
+		fmt.Println("Query for Service:", params.Service)
 		err := mdns.Query(params)
 		if err != nil {
 			fmt.Println("mDNS query error:", err)
@@ -51,7 +56,7 @@ func (ds *DiscoveryService) DiscoverFollower(entriesCh chan *mdns.ServiceEntry) 
 		endpoint := entry.InfoFields[0]
 		ipAddress := entry.AddrV4.String()
 		url := ipAddress + ":" + strconv.Itoa(entry.Port) + endpoint
-
+		fmt.Println("[Discovery] Found entry ", entry.AddrV4, endpoint, entry.Port, entry.Name)
 		if _, exists := ds.Followers.Followers[ipAddress]; !exists {
 			follower.SubscribeFollower(ds.Followers, url, ds.NTPPort)
 		}
