@@ -2,6 +2,7 @@
 package discovery
 
 import (
+	"fmt"
 	"strconv"
 	"time"
 
@@ -37,7 +38,10 @@ func (ds *DiscoveryService) ScanForServers(entriesCh chan *mdns.ServiceEntry) {
 		params.DisableIPv6 = true
 		params.Timeout = 2 * time.Second
 
-		mdns.Query(params)
+		err := mdns.Query(params)
+		if err != nil {
+			fmt.Print("mDNS query error:", err)
+		}
 		time.Sleep(2 * time.Second)
 	}
 }
