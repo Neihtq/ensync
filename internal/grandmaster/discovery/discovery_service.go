@@ -38,6 +38,7 @@ func (ds *DiscoveryService) ScanForServers(entriesCh chan *mdns.ServiceEntry) {
 		params.Timeout = 2 * time.Second
 
 		mdns.Query(params)
+		time.Sleep(2 * time.Second)
 	}
 }
 

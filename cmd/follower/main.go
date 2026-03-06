@@ -35,7 +35,10 @@ func main() {
 
 	fmt.Println("Start Discovery Service")
 	info := []string{"/connections"}
-	mDNSServer := visibility.ExposeMDNS(cpPortInt, info)
+	mDNSServer, err := visibility.ExposeMDNS(cpPortInt, info)
+	if err != nil {
+		fmt.Println("Exposing mDNS failed", err.Error())
+	}
 	defer mDNSServer.Shutdown()
 
 	fmt.Println("Launch audio server.")

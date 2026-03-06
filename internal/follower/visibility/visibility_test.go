@@ -13,7 +13,7 @@ func TestExposeMDNS(t *testing.T) {
 	info := []string{"/connections"}
 
 	// act
-	server := ExposeMDNS(port, info)
+	server, _ := ExposeMDNS(port, info)
 	defer server.Shutdown()
 	time.Sleep(10 * time.Millisecond)
 

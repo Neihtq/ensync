@@ -29,7 +29,6 @@ func getOutboundIP() net.IP {
 }
 
 func SubscribeFollower(followers *Followers, url string, ntpPort string) error {
-	logMessage("Calling Follower ControlPlane: URL=" + url)
 	ipAddr := getOutboundIP()
 	addr := ipAddr.String() + ":" + strings.Trim(ntpPort, ":")
 
