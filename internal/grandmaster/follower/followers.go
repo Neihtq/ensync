@@ -2,8 +2,10 @@
 package follower
 
 import (
+	"fmt"
 	"log"
 	"net"
+	"strings"
 	"sync"
 )
 
@@ -25,6 +27,9 @@ type Follower struct {
 }
 
 func (f *Follower) InitConnection() {
+	if f.Conn != nil {
+		return
+	}
 	addr, err := net.ResolveUDPAddr("udp", f.AudioURL)
 	if err != nil {
 		log.Fatal(err)
@@ -49,18 +54,23 @@ func NewFollower(audioURL string) Follower {
 
 type Followers struct {
 	sync.RWMutex
-	Followers []Follower
+	Followers map[string]Follower
 }
 
 func NewFollowers() *Followers {
 	return &Followers{
-		Followers: []Follower{},
+		Followers: make(map[string]Follower),
 	}
 }
 
-func (followers *Followers) RegisterFollower(addr string) {
+func (followers *Followers) RegisterFollower(ipAddress string, port string) {
 	followers.Lock()
 	defer followers.Unlock()
 
-	followers.Followers = append(followers.Followers, NewFollower(addr))
+	audioURL := ipAddress + ":" + strings.Trim(port, ":")
+
+	if _, exists := followers.Followers[ipAddress]; !exists {
+		fmt.Println("Registering new Follower", ipAddress)
+		followers.Followers[ipAddress] = NewFollower(audioURL)
+	}
 }

@@ -52,8 +52,7 @@ func TestStartClockSync(t *testing.T) {
 	}
 
 	ipProvider := middleware.RealIPProvider{}
-	outboundAddr := ipProvider.GetIP().String() + cp.AudioPort
-	expected := `{"address":"` + outboundAddr + `"}`
+	expected := `{"address":"` + ipProvider.GetIP().String() + `","port":"` + cp.AudioPort + `"}`
 	if !strings.Contains(writer.Body.String(), expected) {
 		t.Errorf("Response body mismatch. Expected %s but got %s", expected, writer.Body.String())
 	}

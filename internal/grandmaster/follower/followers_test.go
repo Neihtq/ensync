@@ -40,8 +40,11 @@ func TestSubscribeFollower(t *testing.T) {
 
 	ipAddr := getOutboundIP().String()
 	expected := ipAddr + audioPort
-	actual := followers.Followers[0].AudioURL
-	if followers.Followers[0].AudioURL != expected {
-		t.Errorf("Expected registered follower AudioURL %s but was %s", expected, actual)
+	registered, exists := followers.Followers[ipAddr]
+	if !exists {
+		t.Errorf("Register Follower failed: Follower not found")
+	}
+	if registered.AudioURL != expected {
+		t.Errorf("Expected registered follower AudioURL %s but was %s", expected, registered.AudioURL)
 	}
 }
