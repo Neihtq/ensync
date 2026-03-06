@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"strings"
 
 	"ensync/internal/grandmaster/logging"
 )
@@ -30,7 +31,7 @@ func getOutboundIP() net.IP {
 func SubscribeFollower(followers *Followers, url string, ntpPort string) error {
 	logMessage("Calling Follower ControlPlane: URL=" + url)
 	ipAddr := getOutboundIP()
-	addr := ipAddr.String() + ntpPort
+	addr := ipAddr.String() + ":" + strings.Trim(ntpPort, ":")
 
 	data := map[string]string{"address": addr}
 	jsonData, _ := json.Marshal(data)
@@ -46,6 +47,7 @@ func SubscribeFollower(followers *Followers, url string, ntpPort string) error {
 
 	var result struct {
 		Address string `json:"address"`
+		Port    string `json:"port"`
 	}
 
 	err = json.NewDecoder(resp.Body).Decode(&result)
@@ -53,7 +55,7 @@ func SubscribeFollower(followers *Followers, url string, ntpPort string) error {
 		return fmt.Errorf("server returned invalid JSON")
 	}
 	logMessage("Register follower " + result.Address)
-	followers.RegisterFollower(result.Address)
+	followers.RegisterFollower(result.Address, result.Port)
 
 	return nil
 }

@@ -9,6 +9,7 @@ import (
 
 	"ensync/internal/grandmaster/audiostreamer"
 	"ensync/internal/grandmaster/clocksync"
+	"ensync/internal/grandmaster/discovery"
 	"ensync/internal/grandmaster/follower"
 	"ensync/internal/grandmaster/logging"
 )
@@ -44,15 +45,15 @@ func main() {
 
 	interval := 100 * time.Millisecond
 
-	log("Subscribe Followers")
-	cpURL := "127.0.0.1:9001/connections"
-	follower.SubscribeFollower(followers, cpURL, ntpPort)
-
 	log("Start NTP service")
 	go clocksync.ExposeNTP(ntpPort, stop)
 
 	log("Start AudioStreamLoop with sending interval " + interval.String())
 	go audioStreamer.StreamAudioToAllLoop(interval, stop)
+
+	log("Start Discovery Service")
+	discoveryService := discovery.NewDiscoveryService(followers, ntpPort)
+	discoveryService.Discover()
 
 	fmt.Println("Continue? [y]es")
 	var input string

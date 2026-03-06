@@ -1,0 +1,54 @@
+// Package discovery implements mDNS for the grandmaster to discover the followers
+package discovery
+
+import (
+	"strconv"
+	"time"
+
+	"ensync/internal/grandmaster/follower"
+
+	"github.com/hashicorp/mdns"
+)
+
+const mdnsName = "_ensync._tcp"
+
+type DiscoveryService struct {
+	Followers *follower.Followers
+	NTPPort   string
+}
+
+func NewDiscoveryService(followers *follower.Followers, ntpPort string) *DiscoveryService {
+	return &DiscoveryService{
+		Followers: followers,
+		NTPPort:   ntpPort,
+	}
+}
+
+func (ds *DiscoveryService) Discover() {
+	entriesCh := make(chan *mdns.ServiceEntry, 4)
+	go ds.DiscoverFollower(entriesCh)
+	go ds.ScanForServers(entriesCh)
+}
+
+func (ds *DiscoveryService) ScanForServers(entriesCh chan *mdns.ServiceEntry) {
+	for {
+		params := mdns.DefaultParams(mdnsName)
+		params.Entries = entriesCh
+		params.DisableIPv6 = true
+		params.Timeout = 2 * time.Second
+
+		mdns.Query(params)
+	}
+}
+
+func (ds *DiscoveryService) DiscoverFollower(entriesCh chan *mdns.ServiceEntry) {
+	for entry := range entriesCh {
+		endpoint := entry.InfoFields[0]
+		ipAddress := entry.AddrV4.String()
+		url := ipAddress + ":" + strconv.Itoa(entry.Port) + endpoint
+
+		if _, exists := ds.Followers.Followers[ipAddress]; !exists {
+			follower.SubscribeFollower(ds.Followers, url, ds.NTPPort)
+		}
+	}
+}
