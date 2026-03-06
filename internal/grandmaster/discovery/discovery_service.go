@@ -35,7 +35,7 @@ func (ds *DiscoveryService) ScanForServers(entriesCh chan *mdns.ServiceEntry) {
 	for {
 		params := &mdns.QueryParam{
 			Service:             mdnsName,
-			Domain:              "local",
+			Domain:              "",
 			Timeout:             2 * time.Second,
 			Entries:             entriesCh,
 			WantUnicastResponse: false,
