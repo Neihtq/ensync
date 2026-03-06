@@ -7,13 +7,11 @@ import (
 	"github.com/hashicorp/mdns"
 )
 
-func ExposeMDNS(port int) {
+func ExposeMDNS(port int, info []string) *mdns.Server {
 	host, _ := os.Hostname()
-	info := []string{"THE Follower service"}
 	service, _ := mdns.NewMDNSService(host, "_ensync._tcp", "", "", port, nil, info)
 
 	server, _ := mdns.NewServer(&mdns.Config{Zone: service})
-	defer server.Shutdown()
 
-	select {}
+	return server
 }
