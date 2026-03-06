@@ -4,13 +4,15 @@ package visibility
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/hashicorp/mdns"
 )
 
 func ExposeMDNS(port int, info []string) (*mdns.Server, error) {
 	host, _ := os.Hostname()
-	service, err := mdns.NewMDNSService(host, "_ensync._tcp.", "", "", port, nil, info)
+	cleanHost := strings.TrimSuffix(host, ".local")
+	service, err := mdns.NewMDNSService(cleanHost, "_ensync._tcp", "local.", fmt.Sprintf("%s.local.", cleanHost), port, nil, info)
 	if err != nil {
 		fmt.Println("Failed mDNS Service initialization ", err.Error())
 		return nil, err

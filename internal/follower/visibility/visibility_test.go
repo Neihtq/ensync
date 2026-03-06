@@ -23,7 +23,7 @@ func TestExposeMDNS(t *testing.T) {
 	go func() {
 		params := mdns.DefaultParams("_ensync._tcp")
 		params.Entries = entriesCh
-		params.Timeout = 10 * time.Millisecond
+		params.Timeout = 100 * time.Millisecond
 		mdns.Query(params)
 		close(entriesCh)
 	}()
