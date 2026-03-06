@@ -10,6 +10,7 @@ import (
 	"ensync/internal/follower/controlplane"
 	"ensync/internal/follower/middleware"
 	"ensync/internal/follower/mirrorclock"
+	"ensync/internal/follower/visibility"
 )
 
 const (
@@ -30,6 +31,9 @@ func main() {
 	fmt.Println("Start ControlPlane")
 	cp := controlplane.NewControlPlaneService(mirrorClock, audioPort, stop)
 	go cp.StartService(cpPort)
+
+	fmt.Println("Start Discovery Service")
+	go visibility.ExposeMDNS()
 
 	fmt.Println("Launch audio server.")
 	audio.LaunchAudioServer(audioPort, ipProvider, mirrorClock, stop)

@@ -53,8 +53,10 @@ func (cp *ControlPlaneService) StartClockSync(writer http.ResponseWriter, reques
 	writer.WriteHeader(http.StatusCreated)
 
 	ipProvider := middleware.RealIPProvider{}
-	outboundAddr := ipProvider.GetIP().String() + cp.AudioPort
-	response := map[string]string{"address": outboundAddr}
+	response := map[string]string{
+		"address": ipProvider.GetIP().String(),
+		"port":    cp.AudioPort,
+	}
 	json.NewEncoder(writer).Encode(response)
 }
 
