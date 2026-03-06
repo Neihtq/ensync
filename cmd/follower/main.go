@@ -16,6 +16,7 @@ import (
 const (
 	audioPort = ":9000"
 	cpPort    = ":9001"
+	cpPortInt = 9001
 	ntpPort   = ":9090"
 )
 
@@ -33,7 +34,9 @@ func main() {
 	go cp.StartService(cpPort)
 
 	fmt.Println("Start Discovery Service")
-	go visibility.ExposeMDNS()
+	info := []string{"/connections"}
+	mDNSServer := visibility.ExposeMDNS(cpPortInt, info)
+	defer mDNSServer.Shutdown()
 
 	fmt.Println("Launch audio server.")
 	audio.LaunchAudioServer(audioPort, ipProvider, mirrorClock, stop)
