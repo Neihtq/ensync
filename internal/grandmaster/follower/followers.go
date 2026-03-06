@@ -70,7 +70,7 @@ func (followers *Followers) RegisterFollower(ipAddress string, port string) {
 	audioURL := ipAddress + ":" + strings.Trim(port, ":")
 
 	if _, exists := followers.Followers[ipAddress]; !exists {
-		fmt.Println("Registering new Follower", ipAddress)
+		fmt.Println("Registering new Follower", ipAddress, port)
 		followers.Followers[ipAddress] = NewFollower(audioURL)
 	}
 }
