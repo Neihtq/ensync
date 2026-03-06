@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/mdns"
 )
 
-const mdnsName = "_ensync._tcp"
+const mdnsName = "_ensync._tcp."
 
 type DiscoveryService struct {
 	Followers *follower.Followers
@@ -35,11 +35,11 @@ func (ds *DiscoveryService) ScanForServers(entriesCh chan *mdns.ServiceEntry) {
 	for {
 		params := &mdns.QueryParam{
 			Service:             mdnsName,
-			Domain:              "",
+			Domain:              "local",
 			Timeout:             2 * time.Second,
 			Entries:             entriesCh,
 			WantUnicastResponse: false,
-			DisableIPv6:         false,
+			DisableIPv6:         true,
 		}
 
 		fmt.Println("Query for Service:", params.Service)
@@ -56,7 +56,9 @@ func (ds *DiscoveryService) DiscoverFollower(entriesCh chan *mdns.ServiceEntry) 
 		endpoint := entry.InfoFields[0]
 		ipAddress := entry.AddrV4.String()
 		url := ipAddress + ":" + strconv.Itoa(entry.Port) + endpoint
+		fmt.Println("=========≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠")
 		fmt.Println("[Discovery] Found entry ", entry.AddrV4, endpoint, entry.Port, entry.Name)
+		fmt.Println("=========≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠")
 		if _, exists := ds.Followers.Followers[ipAddress]; !exists {
 			follower.SubscribeFollower(ds.Followers, url, ds.NTPPort)
 		}
