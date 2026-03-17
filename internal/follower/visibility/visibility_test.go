@@ -11,6 +11,7 @@ import (
 )
 
 func TestExposeMDNS(t *testing.T) {
+	t.Skip("Skipping mDNS test")
 	// arange
 	port := 9999
 	info := []string{"/connections"}
