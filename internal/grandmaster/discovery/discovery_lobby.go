@@ -21,9 +21,14 @@ type DiscoveryLobby struct {
 	Followers *follower.Followers
 }
 
-func (dl *DiscoveryLobby) TransferVisitorsToFollowers() {
-	for ipAddr, port := range dl.visitors {
-		follower.SubscribeFollower(dl.Followers, ipAddr, port)
+func (dl *DiscoveryLobby) TransferVisitorsToFollowers(ntpPort string) {
+	for ipAddr, suffix := range dl.visitors {
+		addr := ipAddr + suffix
+		fmt.Println("Subscribe", addr)
+		err := follower.SubscribeFollower(dl.Followers, addr, ntpPort)
+		if err != nil {
+			fmt.Println("Failed subscribing ", err.Error())
+		}
 	}
 }
 
@@ -36,6 +41,7 @@ func NewDiscoveryLobby(followers *follower.Followers, stop chan struct{}) *Disco
 }
 
 func (dl *DiscoveryLobby) JoinLobby(writer http.ResponseWriter, request *http.Request) {
+	fmt.Println("Received request")
 	var req VisitorPOSTRequest
 	err := json.NewDecoder(request.Body).Decode(&req)
 	if err != nil {
@@ -56,5 +62,7 @@ func (dl *DiscoveryLobby) JoinLobby(writer http.ResponseWriter, request *http.Re
 func (dl *DiscoveryLobby) OpenLobby(port string) {
 	fmt.Println("Open Lobby")
 	mux := http.NewServeMux()
-	mux.HandleFunc("POST /visitor", dl.JoinLobby)
+	mux.HandleFunc("POST /visitors", dl.JoinLobby)
+
+	http.ListenAndServe(port, mux)
 }

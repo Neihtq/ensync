@@ -42,12 +42,13 @@ func ExposeMDNS(port int, info []string) (*mdns.Server, error) {
 	return server, nil
 }
 
-func JoinLobby(addr string, port string, endpoint string) error {
-	fmt.Println("Joining Lobby...")
+func JoinLobby(addr string, cpPort string, endpoint string) error {
+	address := "http://" + addr
+	fmt.Println("Joining Lobby to", address)
 	ipAddr := GetOutboundIP().String()
-	data := map[string]string{"address": ipAddr, "port": port, "endpoint": endpoint}
+	data := map[string]string{"address": ipAddr, "port": cpPort, "endpoint": endpoint}
 	jsonData, _ := json.Marshal(data)
-	resp, err := http.Post("http://"+addr, "application/json", bytes.NewBuffer(jsonData))
+	resp, err := http.Post(address, "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {
 		return err
 	}
