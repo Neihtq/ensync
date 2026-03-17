@@ -17,7 +17,7 @@ import (
 const (
 	logPrefix           = "[Main]"
 	followerServicePort = ":8080"
-	discoveryPort       = ":9090"
+	ntpPort             = ":9090"
 )
 
 func log(message string) {
@@ -46,18 +46,19 @@ func main() {
 	interval := 100 * time.Millisecond
 
 	log("Start NTP service")
-	go clocksync.ExposeNTP(discoveryPort, stop)
+	go clocksync.ExposeNTP(ntpPort, stop)
 
 	log("Start AudioStreamLoop with sending interval " + interval.String())
 	go audioStreamer.StreamAudioToAllLoop(interval, stop)
 
 	log("Start Discovery Lobby")
 	lobby := discovery.NewDiscoveryLobby(followers, stop)
-	lobby.OpenLobby(discoveryPort)
+	go lobby.OpenLobby(ntpPort)
 
 	fmt.Println("Transfer visitors to followers? [y]es")
 	var input string
 	fmt.Scan(&input)
+	lobby.TransferVisitorsToFollowers(ntpPort)
 
 	fmt.Println("Continue? [y]es")
 	fmt.Scan(&input)

@@ -31,7 +31,7 @@ func getOutboundIP() net.IP {
 func SubscribeFollower(followers *Followers, url string, ntpPort string) error {
 	ipAddr := getOutboundIP()
 	addr := ipAddr.String() + ":" + strings.Trim(ntpPort, ":")
-
+	fmt.Println("Subscribing ", addr)
 	data := map[string]string{"address": addr}
 	jsonData, _ := json.Marshal(data)
 	resp, err := http.Post("http://"+url, "application/json", bytes.NewBuffer(jsonData))

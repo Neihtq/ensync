@@ -36,17 +36,13 @@ func main() {
 	go cp.StartService(cpPort)
 
 	fmt.Println("Connecting to Lobby")
-	serverAddr := "http://127.0.0.1/visitors"
+	serverAddr := "127.0.0.1:9090/visitors"
 	for {
 		err := visibility.JoinLobby(serverAddr, cpPort, endpoint)
-		if err != nil {
+		if err == nil {
 			break
 		}
 		time.Sleep(1 * time.Second)
-	}
-
-	for cp.ClockSync == nil {
-		time.Sleep(100 * time.Millisecond)
 	}
 
 	fmt.Println("Launch audio server.")
