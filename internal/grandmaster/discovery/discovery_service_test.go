@@ -55,10 +55,23 @@ func TestDiscover(t *testing.T) {
 	discoveryService.Discover()
 }
 
+func TestLobby(t *testing.T) {
+	// arrange
+	followers := follower.NewFollowers()
+	stop := make(chan struct{})
+	port := ":11111"
+
+	// assert
+	dl := NewDiscoveryLobby(followers, stop)
+	dl.OpenLobby(port)
+
+	close(stop)
+}
+
 func TestJoinLobby(t *testing.T) {
 	// arrange
 	stop := make(chan struct{})
-
+	followers := follower.NewFollowers()
 	visitorPort := ":11112"
 	ipAddress := "127.0.0.1"
 	jsonBody := []byte(`{"address":"` + ipAddress + `","port":"` + visitorPort + `"}`)
@@ -66,8 +79,8 @@ func TestJoinLobby(t *testing.T) {
 	request.Header.Set("Content-Type", "application/json")
 	writer := httptest.NewRecorder()
 
-	// assert
-	dl := NewDiscoveryLobby(stop)
+	// act
+	dl := NewDiscoveryLobby(followers, stop)
 	dl.JoinLobby(writer, request)
 
 	// assert
@@ -77,4 +90,21 @@ func TestJoinLobby(t *testing.T) {
 	if writer.Code != http.StatusCreated {
 		t.Errorf("Expected 201 Created, got %d", writer.Code)
 	}
+}
+
+func TestTransferVisitorsToFollowers(t *testing.T) {
+	stop := make(chan struct{})
+	followers := follower.NewFollowers()
+	visitorPort := ":11113"
+	ipAddress := "127.0.0.1"
+	jsonBody := []byte(`{"address":"` + ipAddress + `","port":"` + visitorPort + `"}`)
+	request := httptest.NewRequest(http.MethodPost, "/visitor", bytes.NewBuffer(jsonBody))
+	request.Header.Set("Content-Type", "application/json")
+	writer := httptest.NewRecorder()
+
+	dl := NewDiscoveryLobby(followers, stop)
+	dl.JoinLobby(writer, request)
+
+	// act
+	dl.TransferVisitorsToFollowers()
 }
