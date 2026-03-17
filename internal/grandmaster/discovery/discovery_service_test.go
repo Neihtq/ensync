@@ -1,7 +1,10 @@
 package discovery
 
 import (
+	"bytes"
 	"net"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -50,4 +53,28 @@ func TestDiscover(t *testing.T) {
 	// act
 	discoveryService := NewDiscoveryService(followers, ntpPort)
 	discoveryService.Discover()
+}
+
+func TestJoinLobby(t *testing.T) {
+	// arrange
+	stop := make(chan struct{})
+
+	visitorPort := ":11112"
+	ipAddress := "127.0.0.1"
+	jsonBody := []byte(`{"address":"` + ipAddress + `","port":"` + visitorPort + `"}`)
+	request := httptest.NewRequest(http.MethodPost, "/visitor", bytes.NewBuffer(jsonBody))
+	request.Header.Set("Content-Type", "application/json")
+	writer := httptest.NewRecorder()
+
+	// assert
+	dl := NewDiscoveryLobby(stop)
+	dl.JoinLobby(writer, request)
+
+	// assert
+	if dl.visitors[ipAddress] != visitorPort {
+		t.Errorf("Visitor creation failed: Expected port %s for ip address %s but received %s", visitorPort, ipAddress, dl.visitors[ipAddress])
+	}
+	if writer.Code != http.StatusCreated {
+		t.Errorf("Expected 201 Created, got %d", writer.Code)
+	}
 }
