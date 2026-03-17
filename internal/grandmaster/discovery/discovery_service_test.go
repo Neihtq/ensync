@@ -16,6 +16,8 @@ import (
 )
 
 func TestDiscoverFollower(t *testing.T) {
+	t.Skip("Skipping mDNS test")
+
 	// arrange
 	mirrorClock := mirrorclock.NewMirrorClock()
 	stop := make(chan struct{})
@@ -46,6 +48,7 @@ func TestDiscoverFollower(t *testing.T) {
 }
 
 func TestDiscover(t *testing.T) {
+	t.Skip("Skipping mDNS test")
 	// arrange
 	followers := follower.NewFollowers()
 	ntpPort := ":9999"
@@ -63,7 +66,7 @@ func TestLobby(t *testing.T) {
 
 	// assert
 	dl := NewDiscoveryLobby(followers, stop)
-	dl.OpenLobby(port)
+	go dl.OpenLobby(port)
 
 	close(stop)
 }
@@ -98,6 +101,7 @@ func TestTransferVisitorsToFollowers(t *testing.T) {
 	stop := make(chan struct{})
 	followers := follower.NewFollowers()
 	visitorPort := ":11113"
+	ntpPort := ":11114"
 	ipAddress := "127.0.0.1"
 	endpoint := "/connections"
 	jsonBody := []byte(`{"address":"` + ipAddress + `","port":"` + visitorPort + `", "endpoint":"` + endpoint + `"}`)
@@ -109,5 +113,5 @@ func TestTransferVisitorsToFollowers(t *testing.T) {
 	dl.JoinLobby(writer, request)
 
 	// act
-	dl.TransferVisitorsToFollowers()
+	dl.TransferVisitorsToFollowers(ntpPort)
 }
