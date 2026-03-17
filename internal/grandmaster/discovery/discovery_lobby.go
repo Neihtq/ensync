@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+
+	"ensync/internal/grandmaster/follower"
 )
 
 type VisitorPOSTRequest struct {
@@ -12,14 +14,22 @@ type VisitorPOSTRequest struct {
 }
 
 type DiscoveryLobby struct {
-	stop     chan struct{}
-	visitors map[string]string
+	stop      chan struct{}
+	visitors  map[string]string
+	Followers *follower.Followers
 }
 
-func NewDiscoveryLobby(stop chan struct{}) *DiscoveryLobby {
+func (dl *DiscoveryLobby) TransferVisitorsToFollowers() {
+	for ipAddr, port := range dl.visitors {
+		follower.SubscribeFollower(dl.Followers, ipAddr, port)
+	}
+}
+
+func NewDiscoveryLobby(followers *follower.Followers, stop chan struct{}) *DiscoveryLobby {
 	return &DiscoveryLobby{
-		stop:     stop,
-		visitors: make(map[string]string),
+		stop:      stop,
+		visitors:  make(map[string]string),
+		Followers: followers,
 	}
 }
 

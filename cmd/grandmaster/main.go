@@ -17,7 +17,7 @@ import (
 const (
 	logPrefix           = "[Main]"
 	followerServicePort = ":8080"
-	ntpPort             = ":9090"
+	discoveryPort       = ":9090"
 )
 
 func log(message string) {
@@ -46,17 +46,20 @@ func main() {
 	interval := 100 * time.Millisecond
 
 	log("Start NTP service")
-	go clocksync.ExposeNTP(ntpPort, stop)
+	go clocksync.ExposeNTP(discoveryPort, stop)
 
 	log("Start AudioStreamLoop with sending interval " + interval.String())
 	go audioStreamer.StreamAudioToAllLoop(interval, stop)
 
-	log("Start Discovery Service")
-	discoveryService := discovery.NewDiscoveryService(followers, ntpPort)
-	discoveryService.Discover()
+	log("Start Discovery Lobby")
+	lobby := discovery.NewDiscoveryLobby(followers, stop)
+	lobby.OpenLobby(discoveryPort)
+
+	fmt.Println("Transfer visitors to followers? [y]es")
+	var input string
+	fmt.Scan(&input)
 
 	fmt.Println("Continue? [y]es")
-	var input string
 	fmt.Scan(&input)
 	if input == "y" {
 		filePath := "./assets/test_audio.mp3"
