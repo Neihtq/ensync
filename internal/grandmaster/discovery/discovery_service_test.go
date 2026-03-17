@@ -74,7 +74,8 @@ func TestJoinLobby(t *testing.T) {
 	followers := follower.NewFollowers()
 	visitorPort := ":11112"
 	ipAddress := "127.0.0.1"
-	jsonBody := []byte(`{"address":"` + ipAddress + `","port":"` + visitorPort + `"}`)
+	endpoint := "/connections"
+	jsonBody := []byte(`{"address":"` + ipAddress + `","port":"` + visitorPort + `", "endpoint":"` + endpoint + `"}`)
 	request := httptest.NewRequest(http.MethodPost, "/visitor", bytes.NewBuffer(jsonBody))
 	request.Header.Set("Content-Type", "application/json")
 	writer := httptest.NewRecorder()
@@ -84,8 +85,9 @@ func TestJoinLobby(t *testing.T) {
 	dl.JoinLobby(writer, request)
 
 	// assert
-	if dl.visitors[ipAddress] != visitorPort {
-		t.Errorf("Visitor creation failed: Expected port %s for ip address %s but received %s", visitorPort, ipAddress, dl.visitors[ipAddress])
+	expected := visitorPort + endpoint
+	if dl.visitors[ipAddress] != expected {
+		t.Errorf("Visitor creation failed: Expected %s for ip address %s but received %s", expected, ipAddress, dl.visitors[ipAddress])
 	}
 	if writer.Code != http.StatusCreated {
 		t.Errorf("Expected 201 Created, got %d", writer.Code)
@@ -97,7 +99,8 @@ func TestTransferVisitorsToFollowers(t *testing.T) {
 	followers := follower.NewFollowers()
 	visitorPort := ":11113"
 	ipAddress := "127.0.0.1"
-	jsonBody := []byte(`{"address":"` + ipAddress + `","port":"` + visitorPort + `"}`)
+	endpoint := "/connections"
+	jsonBody := []byte(`{"address":"` + ipAddress + `","port":"` + visitorPort + `", "endpoint":"` + endpoint + `"}`)
 	request := httptest.NewRequest(http.MethodPost, "/visitor", bytes.NewBuffer(jsonBody))
 	request.Header.Set("Content-Type", "application/json")
 	writer := httptest.NewRecorder()

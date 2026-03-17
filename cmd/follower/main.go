@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"ensync/internal/follower/audio"
 	"ensync/internal/follower/controlplane"
@@ -18,6 +19,7 @@ const (
 	cpPort    = ":9001"
 	cpPortInt = 9001
 	ntpPort   = ":9090"
+	endpoint  = "/connections"
 )
 
 func main() {
@@ -33,13 +35,19 @@ func main() {
 	cp := controlplane.NewControlPlaneService(mirrorClock, audioPort, stop)
 	go cp.StartService(cpPort)
 
-	fmt.Println("Start Discovery Service")
-	info := []string{"/connections"}
-	mDNSServer, err := visibility.ExposeMDNS(cpPortInt, info)
-	if err != nil {
-		fmt.Println("Exposing mDNS failed", err.Error())
+	fmt.Println("Connecting to Lobby")
+	serverAddr := "http://127.0.0.1/visitors"
+	for {
+		err := visibility.JoinLobby(serverAddr, cpPort, endpoint)
+		if err != nil {
+			break
+		}
+		time.Sleep(1 * time.Second)
 	}
-	defer mDNSServer.Shutdown()
+
+	for cp.ClockSync == nil {
+		time.Sleep(100 * time.Millisecond)
+	}
 
 	fmt.Println("Launch audio server.")
 	audio.LaunchAudioServer(audioPort, ipProvider, mirrorClock, stop)
