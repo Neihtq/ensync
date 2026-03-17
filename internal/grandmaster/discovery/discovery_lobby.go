@@ -4,13 +4,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"ensync/internal/grandmaster/follower"
 )
 
 type VisitorPOSTRequest struct {
-	Address string `json:"address"`
-	Port    string `json:"port"`
+	Address  string `json:"address"`
+	Port     string `json:"port"`
+	Endpoint string `json:"endpoint"`
 }
 
 type DiscoveryLobby struct {
@@ -42,12 +44,10 @@ func (dl *DiscoveryLobby) JoinLobby(writer http.ResponseWriter, request *http.Re
 		return
 	}
 
-	if req.Address == "" {
-		fmt.Println("Missing Address")
-		http.Error(writer, "Missing address", http.StatusBadRequest)
-		return
-	}
-	dl.visitors[req.Address] = req.Port
+	port := strings.Trim(req.Port, ":")
+	endpoint := req.Endpoint
+	dl.visitors[req.Address] = ":" + port + endpoint
+	fmt.Println("Added visitor", req.Address)
 
 	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(http.StatusCreated)
