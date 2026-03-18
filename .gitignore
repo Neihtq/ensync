@@ -1,3 +1,5 @@
 assets/
 **/.DS_Store
 coverage.out
+.config
+

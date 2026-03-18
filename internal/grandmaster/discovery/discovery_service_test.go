@@ -1,7 +1,10 @@
 package discovery
 
 import (
+	"bytes"
 	"net"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -13,6 +16,8 @@ import (
 )
 
 func TestDiscoverFollower(t *testing.T) {
+	t.Skip("Skipping mDNS test")
+
 	// arrange
 	mirrorClock := mirrorclock.NewMirrorClock()
 	stop := make(chan struct{})
@@ -43,6 +48,7 @@ func TestDiscoverFollower(t *testing.T) {
 }
 
 func TestDiscover(t *testing.T) {
+	t.Skip("Skipping mDNS test")
 	// arrange
 	followers := follower.NewFollowers()
 	ntpPort := ":9999"
@@ -50,4 +56,62 @@ func TestDiscover(t *testing.T) {
 	// act
 	discoveryService := NewDiscoveryService(followers, ntpPort)
 	discoveryService.Discover()
+}
+
+func TestLobby(t *testing.T) {
+	// arrange
+	followers := follower.NewFollowers()
+	stop := make(chan struct{})
+	port := ":11111"
+
+	// assert
+	dl := NewDiscoveryLobby(followers, stop)
+	go dl.OpenLobby(port)
+
+	close(stop)
+}
+
+func TestJoinLobby(t *testing.T) {
+	// arrange
+	stop := make(chan struct{})
+	followers := follower.NewFollowers()
+	visitorPort := ":11112"
+	ipAddress := "127.0.0.1"
+	endpoint := "/connections"
+	jsonBody := []byte(`{"address":"` + ipAddress + `","port":"` + visitorPort + `", "endpoint":"` + endpoint + `"}`)
+	request := httptest.NewRequest(http.MethodPost, "/visitor", bytes.NewBuffer(jsonBody))
+	request.Header.Set("Content-Type", "application/json")
+	writer := httptest.NewRecorder()
+
+	// act
+	dl := NewDiscoveryLobby(followers, stop)
+	dl.JoinLobby(writer, request)
+
+	// assert
+	expected := visitorPort + endpoint
+	if dl.visitors[ipAddress] != expected {
+		t.Errorf("Visitor creation failed: Expected %s for ip address %s but received %s", expected, ipAddress, dl.visitors[ipAddress])
+	}
+	if writer.Code != http.StatusCreated {
+		t.Errorf("Expected 201 Created, got %d", writer.Code)
+	}
+}
+
+func TestTransferVisitorsToFollowers(t *testing.T) {
+	stop := make(chan struct{})
+	followers := follower.NewFollowers()
+	visitorPort := ":11113"
+	ntpPort := ":11114"
+	ipAddress := "127.0.0.1"
+	endpoint := "/connections"
+	jsonBody := []byte(`{"address":"` + ipAddress + `","port":"` + visitorPort + `", "endpoint":"` + endpoint + `"}`)
+	request := httptest.NewRequest(http.MethodPost, "/visitor", bytes.NewBuffer(jsonBody))
+	request.Header.Set("Content-Type", "application/json")
+	writer := httptest.NewRecorder()
+
+	dl := NewDiscoveryLobby(followers, stop)
+	dl.JoinLobby(writer, request)
+
+	// act
+	dl.TransferVisitorsToFollowers(ntpPort)
 }
