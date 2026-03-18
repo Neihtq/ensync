@@ -51,12 +51,16 @@ func main() {
 	log("Start AudioStreamLoop with sending interval " + interval.String())
 	go audioStreamer.StreamAudioToAllLoop(interval, stop)
 
-	log("Start Discovery Service")
-	discoveryService := discovery.NewDiscoveryService(followers, ntpPort)
-	discoveryService.Discover()
+	log("Start Discovery Lobby")
+	lobby := discovery.NewDiscoveryLobby(followers, stop)
+	go lobby.OpenLobby(ntpPort)
+
+	fmt.Println("Transfer visitors to followers? [y]es")
+	var input string
+	fmt.Scan(&input)
+	lobby.TransferVisitorsToFollowers(ntpPort)
 
 	fmt.Println("Continue? [y]es")
-	var input string
 	fmt.Scan(&input)
 	if input == "y" {
 		filePath := "./assets/test_audio.mp3"

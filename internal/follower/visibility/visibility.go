@@ -2,12 +2,27 @@
 package visibility
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"net"
+	"net/http"
 	"os"
 	"strings"
 
 	"github.com/hashicorp/mdns"
 )
+
+func GetOutboundIP() net.IP {
+	conn, err := net.Dial("udp", "8.8.8.8:80")
+	if err != nil {
+		return nil
+	}
+	defer conn.Close()
+
+	localAddr := conn.LocalAddr().(*net.UDPAddr)
+	return localAddr.IP
+}
 
 func ExposeMDNS(port int, info []string) (*mdns.Server, error) {
 	host, _ := os.Hostname()
@@ -25,4 +40,25 @@ func ExposeMDNS(port int, info []string) (*mdns.Server, error) {
 	}
 
 	return server, nil
+}
+
+func JoinLobby(addr string, cpPort string, endpoint string) error {
+	address := "http://" + addr
+	fmt.Println("Joining Lobby to", address)
+	ipAddr := GetOutboundIP().String()
+	data := map[string]string{"address": ipAddr, "port": cpPort, "endpoint": endpoint}
+	jsonData, _ := json.Marshal(data)
+	resp, err := http.Post(address, "application/json", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("server returned error status: %d", resp.StatusCode)
+	}
+
+	fmt.Println("Joining Lobby succeeded")
+
+	return nil
 }
