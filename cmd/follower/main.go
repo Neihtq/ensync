@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -15,12 +16,27 @@ import (
 )
 
 const (
-	audioPort = ":9000"
-	cpPort    = ":9001"
-	cpPortInt = 9001
-	ntpPort   = ":9090"
-	endpoint  = "/connections"
+	audioPort     = ":9000"
+	cpPort        = ":9001"
+	cpPortInt     = 9001
+	ntpPort       = ":9090"
+	endpoint      = "/connections"
+	lobbyEndpoint = "/visitors"
+	lobbyPort     = ":9090"
 )
+
+func getLobbyAddress() string {
+	data, err := os.ReadFile(".config")
+	if err != nil {
+		fmt.Println("error reading file:", err)
+		return ""
+	}
+
+	address := strings.TrimSpace(string(data))
+	fmt.Println("Read Lobby address:", address)
+
+	return address
+}
 
 func main() {
 	stop := make(chan struct{})
@@ -36,7 +52,8 @@ func main() {
 	go cp.StartService(cpPort)
 
 	fmt.Println("Connecting to Lobby")
-	serverAddr := "127.0.0.1:9090/visitors"
+	serverAddr := getLobbyAddress() + lobbyPort + lobbyEndpoint
+	fmt.Println("Full lobby address", serverAddr)
 	for {
 		err := visibility.JoinLobby(serverAddr, cpPort, endpoint)
 		if err == nil {
