@@ -22,11 +22,14 @@ type removeFollowersRequest struct {
 }
 
 type Follower struct {
+	sync.RWMutex
 	AudioURL string
 	Conn     *net.UDPConn
 }
 
 func (f *Follower) InitConnection() {
+	f.Lock()
+	defer f.Unlock()
 	if f.Conn != nil {
 		return
 	}
@@ -43,6 +46,8 @@ func (f *Follower) InitConnection() {
 }
 
 func (f *Follower) GetConnection() *net.UDPConn {
+	f.Lock()
+	defer f.Unlock()
 	return f.Conn
 }
 
@@ -54,12 +59,12 @@ func NewFollower(audioURL string) Follower {
 
 type Followers struct {
 	sync.RWMutex
-	Followers map[string]Follower
+	Followers map[string]*Follower
 }
 
 func NewFollowers() *Followers {
 	return &Followers{
-		Followers: make(map[string]Follower),
+		Followers: make(map[string]*Follower),
 	}
 }
 
@@ -71,6 +76,7 @@ func (followers *Followers) RegisterFollower(ipAddress string, port string) {
 
 	if _, exists := followers.Followers[ipAddress]; !exists {
 		fmt.Println("Registering new Follower", ipAddress, port)
-		followers.Followers[ipAddress] = NewFollower(audioURL)
+		newFollower := NewFollower(audioURL)
+		followers.Followers[ipAddress] = &newFollower
 	}
 }
