@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"os/signal"
 	"syscall"
@@ -37,6 +38,18 @@ func initializeFixtures() (*follower.Followers, *audiostreamer.AudioStreamer) {
 	return followers, audioStreamer
 }
 
+func getOutboundIP() string {
+	conn, err := net.Dial("udp", "8.8.8.8:80")
+	if err != nil {
+		fmt.Println("Failed fetching outbound IP: ", err.Error())
+		return ""
+	}
+	defer conn.Close()
+
+	localAddr := conn.LocalAddr().(*net.UDPAddr)
+	return localAddr.IP.String()
+}
+
 func main() {
 	followers, audioStreamer := initializeFixtures()
 	stop := make(chan struct{})
@@ -51,7 +64,8 @@ func main() {
 	log("Start AudioStreamLoop with sending interval " + interval.String())
 	go audioStreamer.StreamAudioToAllLoop(interval, stop)
 
-	log("Start Discovery Lobby")
+	outboundIP := getOutboundIP()
+	log("Start Discovery Lobby with IP:\n" + outboundIP)
 	lobby := discovery.NewDiscoveryLobby(followers, stop)
 	go lobby.OpenLobby(ntpPort)
 
