@@ -47,7 +47,7 @@ func (stream *AudioStream) Read(playBuffer []byte) (int, error) {
 	const threshold = 192000
 	stream.mu.Lock()
 	defer stream.mu.Unlock()
-	const startupBytes = 26460
+	const startupBytes = 300_000
 
 	if stream.isBuffering {
 		if stream.bufferSize < startupBytes {
@@ -82,7 +82,7 @@ func (stream *AudioStream) Read(playBuffer []byte) (int, error) {
 	}
 
 	// too late --> drop chunk
-	if drift > 200*time.Millisecond {
+	if drift > 500*time.Millisecond {
 		stream.chunks.PopFront()
 		stream.bufferSize -= len(targetChunk.data)
 		return len(playBuffer), nil
