@@ -49,7 +49,7 @@ func expose(
 		playAt := int64(binary.BigEndian.Uint64(buffer[8:16]))
 		audio := buffer[headerSize:numBytes]
 
-		if clock.GetStartTime().IsZero() {
+		if clock.GetStartTime().IsZero() || clock.GetStartTimeInt64() != absoluteStartTime {
 			clock.InitStartTime(absoluteStartTime)
 		}
 

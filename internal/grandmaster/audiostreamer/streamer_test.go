@@ -54,7 +54,7 @@ func TestStreamAudioToAll(t *testing.T) {
 	audioStreamer.StreamAudioToAll()
 
 	// assert
-	queueLength := audioStreamer.Queue.Len()
+	queueLength := audioStreamer.TrackQueue.Len()
 	if queueLength > 0 {
 		t.Fatal("Failed StreamAudioToAll: Queue should be empt but had length " + strconv.Itoa(queueLength))
 	}
