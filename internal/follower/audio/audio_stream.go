@@ -97,6 +97,7 @@ func (stream *AudioStream) playAudio(playBuffer []byte, targetChunk AudioChunk) 
 }
 
 func (stream *AudioStream) validateClockDrift(playBuffer []byte, clockDrift time.Duration, targetChunk AudioChunk) bool {
+	fmt.Println("clockdrift", clockDrift)
 	if clockDrift < -20*time.Millisecond {
 		zero(playBuffer)
 		return false
@@ -106,6 +107,13 @@ func (stream *AudioStream) validateClockDrift(playBuffer []byte, clockDrift time
 		stream.chunks.PopFront()
 		stream.bufferSize -= len(targetChunk.data)
 		return false
+	}
+
+	// Clock Slewing
+	if stream.hasAligned {
+		target := 200 * time.Millisecond
+		error := target - clockDrift
+		stream.playbackDelay += error / 1000
 	}
 
 	return true
@@ -136,19 +144,22 @@ func (stream *AudioStream) bufferIsReady() bool {
 }
 
 func (stream *AudioStream) alignDelayWithCurrentTime(startTime time.Time, targetChunk AudioChunk) {
-	const alignmentSampleThreshold = 10
 	targetPlayTime := startTime.Add(time.Duration(targetChunk.playAt))
 	now := stream.clock.Now()
 
 	currentOffset := now.Sub(targetPlayTime)
 	stream.alignmentSamples = append(stream.alignmentSamples, currentOffset)
+
+	const alignmentSampleThreshold = 10
 	if len(stream.alignmentSamples) >= alignmentSampleThreshold {
 		var total time.Duration
 		for _, sample := range stream.alignmentSamples {
 			total += sample
 		}
+		avgDrift := total / alignmentSampleThreshold
+		targetCushion := 200 * time.Millisecond
+		stream.playbackDelay = targetCushion - avgDrift
 
-		stream.playbackDelay += (total / alignmentSampleThreshold)
 		stream.hasAligned = true
 		stream.alignmentSamples = nil
 	}
