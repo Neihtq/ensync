@@ -1,6 +1,7 @@
 package audio
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
@@ -8,6 +9,8 @@ import (
 
 	"github.com/gammazero/deque"
 )
+
+const startupBytes = 300_000
 
 type AudioChunk struct {
 	data   []byte
@@ -47,21 +50,10 @@ func (stream *AudioStream) WriteToBuffer(data []byte, playAt int64) {
 }
 
 func (stream *AudioStream) Read(playBuffer []byte) (int, error) {
-	const threshold = 192000
 	stream.mu.Lock()
 	defer stream.mu.Unlock()
-	const startupBytes = 300_000
 
-	if stream.isBuffering {
-		if stream.bufferSize < startupBytes {
-			zero(playBuffer)
-			return len(playBuffer), nil
-		}
-		stream.isBuffering = false
-		stream.hasAligned = false
-	}
-
-	if stream.chunks.Len() == 0 {
+	if !stream.bufferIsReady() {
 		zero(playBuffer)
 		return len(playBuffer), nil
 	}
@@ -70,48 +62,83 @@ func (stream *AudioStream) Read(playBuffer []byte) (int, error) {
 	startTime := stream.clock.GetStartTime()
 
 	if startTime.IsZero() {
+		fmt.Println("Time is Zero!")
 		stream.isBuffering = true
 		zero(playBuffer)
 		return len(playBuffer), nil
 	}
 
 	if !stream.hasAligned {
-		targetPlayTime := startTime.Add(time.Duration(targetChunk.playAt))
-		now := stream.clock.Now()
-		stream.playbackDelay += now.Sub(targetPlayTime)
-		stream.hasAligned = true
+		stream.alignDelayWithCurrentTime(startTime, targetChunk)
 	}
 
-	targetPlayTime := startTime.Add(time.Duration(targetChunk.playAt)).Add(stream.playbackDelay)
-	now := stream.clock.Now()
-	drift := now.Sub(targetPlayTime)
-
-	// too early --> silence
-	if drift < -20*time.Millisecond {
-		zero(playBuffer)
+	clockDrift := stream.calcClockDrift(startTime, targetChunk)
+	if !stream.validateClockDrift(playBuffer, clockDrift, targetChunk) {
 		return len(playBuffer), nil
 	}
 
-	// too late --> drop chunk
-	if drift > 500*time.Millisecond {
-		stream.chunks.PopFront()
-		stream.bufferSize -= len(targetChunk.data)
-		return len(playBuffer), nil
-	}
+	return stream.playAudio(playBuffer, targetChunk), nil
+}
 
-	// play
-	n := copy(playBuffer, targetChunk.data)
-	if n < len(targetChunk.data) {
+func (stream *AudioStream) playAudio(playBuffer []byte, targetChunk AudioChunk) int {
+	playingBytes := copy(playBuffer, targetChunk.data)
+	if playingBytes < len(targetChunk.data) {
 		stream.chunks.Set(0, AudioChunk{
-			data:   targetChunk.data[n:],
+			data:   targetChunk.data[playingBytes:],
 			playAt: targetChunk.playAt,
 		})
 	} else {
 		stream.chunks.PopFront()
 	}
 
-	stream.bufferSize -= n
-	return n, nil
+	stream.bufferSize -= playingBytes
+	return playingBytes
+}
+
+func (stream *AudioStream) validateClockDrift(playBuffer []byte, clockDrift time.Duration, targetChunk AudioChunk) bool {
+	if clockDrift < -20*time.Millisecond {
+		zero(playBuffer)
+		return false
+	}
+
+	if clockDrift > 500*time.Millisecond {
+		stream.chunks.PopFront()
+		stream.bufferSize -= len(targetChunk.data)
+		return false
+	}
+
+	return true
+}
+
+func (stream *AudioStream) calcClockDrift(startTime time.Time, targetChunk AudioChunk) time.Duration {
+	targetPlayTime := startTime.Add(time.Duration(targetChunk.playAt)).Add(stream.playbackDelay)
+	now := stream.clock.Now()
+	drift := now.Sub(targetPlayTime)
+
+	return drift
+}
+
+func (stream *AudioStream) bufferIsReady() bool {
+	if stream.isBuffering {
+		if stream.bufferSize < startupBytes {
+			return false
+		}
+		stream.isBuffering = false
+		stream.hasAligned = false
+	}
+
+	if stream.chunks.Len() == 0 {
+		return false
+	}
+
+	return true
+}
+
+func (stream *AudioStream) alignDelayWithCurrentTime(startTime time.Time, targetChunk AudioChunk) {
+	targetPlayTime := startTime.Add(time.Duration(targetChunk.playAt))
+	now := stream.clock.Now()
+	stream.playbackDelay += now.Sub(targetPlayTime)
+	stream.hasAligned = true
 }
 
 func zero(buffer []byte) {
