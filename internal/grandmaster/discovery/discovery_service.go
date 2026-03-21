@@ -60,10 +60,8 @@ func (ds *DiscoveryService) DiscoverFollower(entriesCh chan *mdns.ServiceEntry) 
 		endpoint := entry.InfoFields[0]
 		ipAddress := entry.AddrV4.String()
 		url := ipAddress + ":" + strconv.Itoa(entry.Port) + endpoint
-		fmt.Println("=========")
-		fmt.Println("[Discovery] Found entry ", ipAddress, endpoint, entry.Port, entry.Name)
-		fmt.Println("=========")
 		if _, exists := ds.Followers.Followers[ipAddress]; !exists {
+			fmt.Println("[Discovery] Found entry ", ipAddress, endpoint, entry.Port, entry.Name)
 			follower.SubscribeFollower(ds.Followers, url, ds.NTPPort)
 		}
 	}
