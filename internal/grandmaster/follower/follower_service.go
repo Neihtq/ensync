@@ -53,9 +53,7 @@ func SubscribeFollower(followers *Followers, url string, ntpPort string) error {
 	if err != nil {
 		return fmt.Errorf("server returned invalid JSON")
 	}
-	fmt.Println("================================================================================")
 	logMessage("Register follower " + result.Address)
-	fmt.Println("================================================================================")
 	followers.RegisterFollower(result.Address, result.Port)
 
 	return nil

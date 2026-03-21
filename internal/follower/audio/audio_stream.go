@@ -15,17 +15,20 @@ type AudioChunk struct {
 }
 
 type AudioStream struct {
-	mu          sync.Mutex
-	chunks      deque.Deque[AudioChunk]
-	bufferSize  int
-	isBuffering bool
-	clock       *mirrorclock.MirrorClock
+	mu            sync.Mutex
+	chunks        deque.Deque[AudioChunk]
+	bufferSize    int
+	isBuffering   bool
+	clock         *mirrorclock.MirrorClock
+	playbackDelay time.Duration
+	hasAligned    bool
 }
 
 func NewAudioStream(clock *mirrorclock.MirrorClock) *AudioStream {
 	return &AudioStream{
-		isBuffering: true,
-		clock:       clock,
+		isBuffering:   true,
+		clock:         clock,
+		playbackDelay: 100 * time.Millisecond,
 	}
 }
 
@@ -47,7 +50,7 @@ func (stream *AudioStream) Read(playBuffer []byte) (int, error) {
 	const threshold = 192000
 	stream.mu.Lock()
 	defer stream.mu.Unlock()
-	const startupBytes = 26460
+	const startupBytes = 300_000
 
 	if stream.isBuffering {
 		if stream.bufferSize < startupBytes {
@@ -55,6 +58,7 @@ func (stream *AudioStream) Read(playBuffer []byte) (int, error) {
 			return len(playBuffer), nil
 		}
 		stream.isBuffering = false
+		stream.hasAligned = false
 	}
 
 	if stream.chunks.Len() == 0 {
@@ -71,18 +75,25 @@ func (stream *AudioStream) Read(playBuffer []byte) (int, error) {
 		return len(playBuffer), nil
 	}
 
-	targetPlayTime := startTime.Add(time.Duration(targetChunk.playAt))
+	if !stream.hasAligned {
+		targetPlayTime := startTime.Add(time.Duration(targetChunk.playAt))
+		now := stream.clock.Now()
+		stream.playbackDelay += now.Sub(targetPlayTime)
+		stream.hasAligned = true
+	}
+
+	targetPlayTime := startTime.Add(time.Duration(targetChunk.playAt)).Add(stream.playbackDelay)
 	now := stream.clock.Now()
 	drift := now.Sub(targetPlayTime)
 
 	// too early --> silence
-	if drift < 0 {
+	if drift < -20*time.Millisecond {
 		zero(playBuffer)
 		return len(playBuffer), nil
 	}
 
 	// too late --> drop chunk
-	if drift > 200*time.Millisecond {
+	if drift > 500*time.Millisecond {
 		stream.chunks.PopFront()
 		stream.bufferSize -= len(targetChunk.data)
 		return len(playBuffer), nil
