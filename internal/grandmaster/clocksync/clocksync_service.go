@@ -38,14 +38,8 @@ func ExposeNTP(port string, stop chan struct{}) error {
 				fmt.Println("Error reading: ", err)
 				continue
 			}
-			receivedTime := time.Now().UnixNano()
 
-			timestamp := binary.BigEndian.Uint64(buffer[:numBytes])
-
-			packet := make([]byte, 24)
-			binary.BigEndian.PutUint64(packet[:8], uint64(timestamp))
-			binary.BigEndian.PutUint64(packet[8:16], uint64(receivedTime))
-			binary.BigEndian.PutUint64(packet[16:], uint64(time.Now().UnixNano())) // sendTime
+			packet := prepareTimestampPacket(buffer, numBytes)
 
 			_, err = conn.WriteToUDP(packet, sender)
 			if err != nil {
@@ -53,4 +47,16 @@ func ExposeNTP(port string, stop chan struct{}) error {
 			}
 		}
 	}
+}
+
+func prepareTimestampPacket(buffer []byte, numBytes int) []byte {
+	packet := make([]byte, 24)
+	receivedTime := time.Now().UnixNano()
+	followerSendTime := binary.BigEndian.Uint64(buffer[:numBytes])
+	severSendTime := time.Now().UnixNano()
+	binary.BigEndian.PutUint64(packet[:8], uint64(followerSendTime))
+	binary.BigEndian.PutUint64(packet[8:16], uint64(receivedTime))
+	binary.BigEndian.PutUint64(packet[16:], uint64(severSendTime))
+
+	return packet
 }
