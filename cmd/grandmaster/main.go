@@ -50,6 +50,24 @@ func getOutboundIP() string {
 	return localAddr.IP.String()
 }
 
+func openLobby(followers *follower.Followers, stop chan struct{}) {
+	outboundIP := getOutboundIP()
+	log("Start Discovery Lobby with IP:\n" + outboundIP)
+	lobby := discovery.NewDiscoveryLobby(followers, stop)
+	go lobby.OpenLobby(ntpPort)
+
+	fmt.Println("Transfer visitors to followers? [y]es")
+	var input string
+	fmt.Scan(&input)
+	lobby.TransferVisitorsToFollowers(ntpPort)
+}
+
+func startDiscoveryService(followers *follower.Followers) {
+	log("Start Discovery Service")
+	discoveryService := discovery.NewDiscoveryService(followers, ntpPort)
+	discoveryService.Discover()
+}
+
 func main() {
 	followers, audioStreamer := initializeFixtures()
 	stop := make(chan struct{})
@@ -64,16 +82,10 @@ func main() {
 	log("Start AudioStreamLoop with sending interval " + interval.String())
 	go audioStreamer.StreamAudioToAllLoop(interval, stop)
 
-	outboundIP := getOutboundIP()
-	log("Start Discovery Lobby with IP:\n" + outboundIP)
-	lobby := discovery.NewDiscoveryLobby(followers, stop)
-	go lobby.OpenLobby(ntpPort)
+	// openLobby(followers, stop)
+	startDiscoveryService(followers)
 
-	fmt.Println("Transfer visitors to followers? [y]es")
 	var input string
-	fmt.Scan(&input)
-	lobby.TransferVisitorsToFollowers(ntpPort)
-
 	fmt.Println("Continue? [y]es")
 	fmt.Scan(&input)
 	if input == "y" {
