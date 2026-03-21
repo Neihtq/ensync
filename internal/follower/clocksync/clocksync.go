@@ -43,9 +43,9 @@ func NewClockSync(clock *mirrorclock.MirrorClock, serverURL string) *ClockSync {
 }
 
 func (clockSync *ClockSync) SendNTPRequest() error {
-	t1 := time.Now().UnixNano()
+	followerSendTime := time.Now().UnixNano()
 	packet := make([]byte, timeStampSize)
-	binary.BigEndian.PutUint64(packet, uint64(t1))
+	binary.BigEndian.PutUint64(packet, uint64(followerSendTime))
 	_, err := clockSync.Conn.Write(packet)
 	if err != nil {
 		fmt.Println("Error sending NTP request", err)
