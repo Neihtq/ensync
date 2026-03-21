@@ -3,7 +3,8 @@ package discovery
 
 import (
 	"fmt"
-	"net"
+	"io"
+	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -28,44 +29,21 @@ func NewDiscoveryService(followers *follower.Followers, ntpPort string) *Discove
 }
 
 func (ds *DiscoveryService) Discover() {
+	log.SetOutput(io.Discard)
+
 	entriesCh := make(chan *mdns.ServiceEntry, 16)
 	go ds.DiscoverFollower(entriesCh)
 	go ds.ScanForServers(entriesCh)
 }
 
 func (ds *DiscoveryService) ScanForServers(entriesCh chan *mdns.ServiceEntry) {
+	params := mdns.DefaultParams(mdnsName)
+	params.Entries = entriesCh
+	params.DisableIPv6 = true
+	params.Timeout = 2 * time.Second
 	for {
-		ifaces, err := net.Interfaces()
-		if err != nil {
-			fmt.Println("Error getting interfaces:", err)
-			time.Sleep(2 * time.Second)
-			continue
-		}
-
-		fmt.Println("Query for Service:", mdnsName)
-
-		for _, ifc := range ifaces {
-			if (ifc.Flags&net.FlagLoopback) != 0 || (ifc.Flags&net.FlagUp) == 0 || (ifc.Flags&net.FlagMulticast) == 0 {
-				continue
-			}
-
-			i := ifc
-			params := &mdns.QueryParam{
-				Service:             mdnsName,
-				Domain:              "",
-				Timeout:             2 * time.Second,
-				Interface:           &i,
-				Entries:             entriesCh,
-				WantUnicastResponse: false,
-				DisableIPv6:         true,
-			}
-
-			go func(p *mdns.QueryParam) {
-				_ = mdns.Query(p)
-			}(params)
-		}
-
-		time.Sleep(2 * time.Second)
+		mdns.Query(params)
+		params.Timeout = 2 * time.Second
 	}
 }
 
@@ -82,10 +60,8 @@ func (ds *DiscoveryService) DiscoverFollower(entriesCh chan *mdns.ServiceEntry) 
 		endpoint := entry.InfoFields[0]
 		ipAddress := entry.AddrV4.String()
 		url := ipAddress + ":" + strconv.Itoa(entry.Port) + endpoint
-		fmt.Println("=========≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠")
-		fmt.Println("[Discovery] Found entry ", ipAddress, endpoint, entry.Port, entry.Name)
-		fmt.Println("=========≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠")
 		if _, exists := ds.Followers.Followers[ipAddress]; !exists {
+			fmt.Println("[Discovery] Found entry ", ipAddress, endpoint, entry.Port, entry.Name)
 			follower.SubscribeFollower(ds.Followers, url, ds.NTPPort)
 		}
 	}

@@ -13,6 +13,8 @@ import (
 	"github.com/hashicorp/mdns"
 )
 
+const mDNSServiceName = "_ensync._tcp"
+
 func GetOutboundIP() net.IP {
 	conn, err := net.Dial("udp", "8.8.8.8:80")
 	if err != nil {
@@ -27,7 +29,15 @@ func GetOutboundIP() net.IP {
 func ExposeMDNS(port int, info []string) (*mdns.Server, error) {
 	host, _ := os.Hostname()
 	cleanHost := strings.TrimSuffix(host, ".local")
-	service, err := mdns.NewMDNSService(cleanHost, "_ensync._tcp", "local.", fmt.Sprintf("%s.local.", cleanHost), port, nil, info)
+	service, err := mdns.NewMDNSService(
+		cleanHost,
+		mDNSServiceName,
+		"local.",
+		fmt.Sprintf("%s.local.", cleanHost),
+		port,
+		nil,
+		info,
+	)
 	if err != nil {
 		fmt.Println("Failed mDNS Service initialization ", err.Error())
 		return nil, err

@@ -61,7 +61,7 @@ func (cp *ControlPlaneService) StartClockSync(writer http.ResponseWriter, reques
 }
 
 func (cp *ControlPlaneService) StartService(port string) {
-	fmt.Println("Starting ControlPlane")
+	fmt.Println("Starting ControlPlane - Port", port)
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("POST /connections", cp.StartClockSync)

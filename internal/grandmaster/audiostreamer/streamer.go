@@ -4,6 +4,7 @@ package audiostreamer
 import (
 	"context"
 	"encoding/binary"
+	"fmt"
 	"strconv"
 	"sync"
 	"time"
@@ -97,11 +98,13 @@ func (streamer *AudioStreamer) StreamAudioToAll() {
 	}
 }
 
-func streamAudioToFollower(buffer []byte, follower follower.Follower) {
-	if follower.Conn == nil {
-		follower.InitConnection()
-	}
+func streamAudioToFollower(buffer []byte, follower *follower.Follower) {
 	conn := follower.GetConnection()
+	if conn == nil {
+		fmt.Println("Initiate streaming connection")
+		follower.InitConnection()
+		conn = follower.GetConnection()
+	}
 	conn.Write(buffer)
 }
 
