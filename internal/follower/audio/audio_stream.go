@@ -18,13 +18,14 @@ type AudioChunk struct {
 }
 
 type AudioStream struct {
-	mu            sync.Mutex
-	chunks        deque.Deque[AudioChunk]
-	bufferSize    int
-	isBuffering   bool
-	clock         *mirrorclock.MirrorClock
-	playbackDelay time.Duration
-	hasAligned    bool
+	mu               sync.Mutex
+	chunks           deque.Deque[AudioChunk]
+	bufferSize       int
+	isBuffering      bool
+	clock            *mirrorclock.MirrorClock
+	playbackDelay    time.Duration
+	hasAligned       bool
+	alignmentSamples []time.Duration
 }
 
 func NewAudioStream(clock *mirrorclock.MirrorClock) *AudioStream {
@@ -135,10 +136,22 @@ func (stream *AudioStream) bufferIsReady() bool {
 }
 
 func (stream *AudioStream) alignDelayWithCurrentTime(startTime time.Time, targetChunk AudioChunk) {
+	const alignmentSampleThreshold = 10
 	targetPlayTime := startTime.Add(time.Duration(targetChunk.playAt))
 	now := stream.clock.Now()
-	stream.playbackDelay += now.Sub(targetPlayTime)
-	stream.hasAligned = true
+
+	currentOffset := now.Sub(targetPlayTime)
+	stream.alignmentSamples = append(stream.alignmentSamples, currentOffset)
+	if len(stream.alignmentSamples) >= alignmentSampleThreshold {
+		var total time.Duration
+		for _, sample := range stream.alignmentSamples {
+			total += sample
+		}
+
+		stream.playbackDelay += (total / alignmentSampleThreshold)
+		stream.hasAligned = true
+		stream.alignmentSamples = nil
+	}
 }
 
 func zero(buffer []byte) {
