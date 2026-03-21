@@ -151,8 +151,7 @@ func (stream *AudioStream) alignDelayWithCurrentTime(startTime time.Time, target
 			total += sample
 		}
 		avgDrift := total / alignmentSampleThreshold
-		targetCushion := 200 * time.Millisecond
-		stream.playbackDelay = targetCushion - avgDrift
+		stream.playbackDelay += avgDrift
 
 		stream.hasAligned = true
 		stream.alignmentSamples = nil
