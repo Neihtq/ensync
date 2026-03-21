@@ -27,10 +27,10 @@ type AudioStreamer struct {
 	cancel context.CancelFunc
 
 	Followers      *follower.Followers
-	Queue          deque.Deque[string] // List of tracks
+	TrackQueue     deque.Deque[string] // List of tracks
 	Interval       time.Duration
 	SourceProvider SourceProvider
-	Clock          clock.MediaClock
+	MediaClock     clock.MediaClock
 	LookAhead      int64
 }
 
@@ -48,19 +48,19 @@ func NewAudioStreamer(
 		Interval:       interval,
 		LookAhead:      lookAhead,
 		SourceProvider: sourceProvider,
-		Clock:          *clock.NewMediaClock(),
+		MediaClock:     *clock.NewMediaClock(),
 	}
 }
 
 func (streamer *AudioStreamer) AddToQueue(filePath string) {
 	streamer.mu.Lock()
 	defer streamer.mu.Unlock()
-	streamer.Queue.PushBack(filePath)
+	streamer.TrackQueue.PushBack(filePath)
 }
 
 func (streamer *AudioStreamer) StreamAudioToAll() {
 	streamer.mu.Lock()
-	filePath := streamer.Queue.PopFront()
+	filePath := streamer.TrackQueue.PopFront()
 	streamer.mu.Unlock()
 	logging.Log(logPrefix, "Stream "+filePath)
 
@@ -71,8 +71,8 @@ func (streamer *AudioStreamer) StreamAudioToAll() {
 	buffer := make([]byte, 3528)
 
 	for {
-		streamer.Clock.UpdateMediaTime()
-		if streamer.Clock.GetSentTimeInt64()-streamer.Clock.GetMediaTimeInt64() > streamer.LookAhead {
+		streamer.MediaClock.UpdateMediaTime()
+		if streamer.MediaClock.GetSentTimeInt64()-streamer.MediaClock.GetMediaTimeInt64() > streamer.LookAhead {
 			<-ticker.C
 			continue
 		}
@@ -83,19 +83,25 @@ func (streamer *AudioStreamer) StreamAudioToAll() {
 			break
 		}
 
-		absoluteStartTime := streamer.Clock.GetStartTimeInt64()
-		playAt := streamer.Clock.GetSentTimeInt64()
-		envelope := make([]byte, headerSize+n)
-		binary.BigEndian.PutUint64(envelope[0:8], uint64(absoluteStartTime))
-		binary.BigEndian.PutUint64(envelope[8:16], uint64(playAt))
-		copy(envelope[headerSize:], buffer[:n])
+		envelope := streamer.prepareEnvelope(buffer, n)
 
 		for _, f := range streamer.Followers.Followers {
 			streamAudioToFollower(envelope, f)
 		}
 		durationSent := int64(n) * 1e9 / (audioSource.SampleRate * audioSource.Channels * 2)
-		streamer.Clock.AddToSentTime(durationSent)
+		streamer.MediaClock.AddToSentTime(durationSent)
 	}
+}
+
+func (streamer *AudioStreamer) prepareEnvelope(buffer []byte, packetSize int) []byte {
+	absoluteStartTime := streamer.MediaClock.GetStartTimeInt64()
+	playAt := streamer.MediaClock.GetSentTimeInt64()
+	envelope := make([]byte, headerSize+packetSize)
+	binary.BigEndian.PutUint64(envelope[0:8], uint64(absoluteStartTime))
+	binary.BigEndian.PutUint64(envelope[8:16], uint64(playAt))
+	copy(envelope[headerSize:], buffer[:packetSize])
+
+	return envelope
 }
 
 func streamAudioToFollower(buffer []byte, follower *follower.Follower) {
@@ -116,13 +122,13 @@ func (streamer *AudioStreamer) StreamAudioToAllLoop(sleepDuration time.Duration,
 			return
 		default:
 			streamer.mu.Lock()
-			if streamer.Queue.Len() == 0 {
+			if streamer.TrackQueue.Len() == 0 {
 				streamer.mu.Unlock()
 				time.Sleep(sleepDuration)
 				continue
 			}
-			streamer.Clock = *clock.NewMediaClock()
-			streamer.Clock.UpdateStartTime(int(streamer.LookAhead))
+			streamer.MediaClock = *clock.NewMediaClock()
+			streamer.MediaClock.UpdateStartTime(int(streamer.LookAhead))
 			streamer.mu.Unlock()
 			streamer.StreamAudioToAll()
 		}
