@@ -99,11 +99,6 @@ func (stream *AudioStream) playAudio(playBuffer []byte, targetChunk AudioChunk) 
 func (stream *AudioStream) validateClockDrift(playBuffer []byte, clockDrift time.Duration, targetChunk AudioChunk) bool {
 	fmt.Println("clockdrift", clockDrift)
 
-	// Clock Slewing
-	if stream.hasAligned {
-		stream.playbackDelay -= clockDrift / 1000
-	}
-
 	if clockDrift < -20*time.Millisecond {
 		zero(playBuffer)
 		return false
