@@ -29,13 +29,14 @@ func GetOutboundIP() net.IP {
 func ExposeMDNS(port int, info []string) (*mdns.Server, error) {
 	host, _ := os.Hostname()
 	cleanHost := strings.TrimSuffix(host, ".local")
+	ipAddr := GetOutboundIP()
 	service, err := mdns.NewMDNSService(
 		cleanHost,
 		mDNSServiceName,
 		"local.",
 		fmt.Sprintf("%s.local.", cleanHost),
 		port,
-		nil,
+		[]net.IP{ipAddr},
 		info,
 	)
 	if err != nil {
