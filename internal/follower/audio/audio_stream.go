@@ -1,6 +1,7 @@
 package audio
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
@@ -71,6 +72,7 @@ func (stream *AudioStream) Read(playBuffer []byte) (int, error) {
 	now := stream.clock.Now()
 
 	if now.Before(startPlaybackTime) {
+		fmt.Println("too early")
 		zero(playBuffer)
 		return len(playBuffer), nil
 	}
