@@ -67,9 +67,9 @@ func (stream *AudioStream) Read(playBuffer []byte) (int, error) {
 		return len(playBuffer), nil
 	}
 
-	if !stream.hasAligned {
-		stream.alignDelayWithCurrentTime(startTime, targetChunk)
-	}
+	// if !stream.hasAligned {
+	// 	stream.alignDelayWithCurrentTime(startTime, targetChunk)
+	// }
 
 	clockDrift := stream.calcClockDrift(startTime, targetChunk)
 	if !stream.validateClockDrift(playBuffer, clockDrift, targetChunk) {
