@@ -125,13 +125,13 @@ func (stream *AudioStream) calcClockDrift(startTime time.Time, targetChunk Audio
 }
 
 func (stream *AudioStream) bufferIsReady() bool {
-	if stream.isBuffering {
-		if stream.bufferSize < startupBytes {
-			return false
-		}
-		stream.isBuffering = false
-		stream.hasAligned = false
-	}
+	// if stream.isBuffering {
+	// 	if stream.bufferSize < startupBytes {
+	// 		return false
+	// 	}
+	// 	stream.isBuffering = false
+	// 	stream.hasAligned = false
+	// }
 
 	if stream.chunks.Len() == 0 {
 		stream.isBuffering = true
