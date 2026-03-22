@@ -91,8 +91,6 @@ func (clockSync *ClockSync) RunClockSync(stop chan struct{}) {
 			return
 		case <-ticker.C:
 			clockSync.SendNTPRequest()
-			now := clockSync.Clock.Now().UnixNano()
-			fmt.Printf("\rTime: %v", now)
 		}
 	}
 }
