@@ -32,7 +32,7 @@ func NewAudioStream(clock *mirrorclock.MirrorClock) *AudioStream {
 	return &AudioStream{
 		isBuffering:   true,
 		clock:         clock,
-		playbackDelay: 100 * time.Millisecond,
+		playbackDelay: 2000 * time.Millisecond,
 	}
 }
 
@@ -63,20 +63,41 @@ func (stream *AudioStream) Read(playBuffer []byte) (int, error) {
 	startTime := stream.clock.GetStartTime()
 
 	if startTime.IsZero() {
-		fmt.Println("Time is Zero!")
 		stream.isBuffering = true
 		zero(playBuffer)
 		return len(playBuffer), nil
 	}
 
-	if !stream.hasAligned {
-		stream.alignDelayWithCurrentTime(startTime, targetChunk)
+	// if !stream.hasAligned {
+	// 	stream.alignDelayWithCurrentTime(startTime, targetChunk)
+	// }
+
+	startPlaybackTime := startTime.Add(time.Duration(targetChunk.playAt))
+	now := stream.clock.Now()
+
+	if now.Before(startPlaybackTime) {
+		durationToSilence := startPlaybackTime.Sub(now)
+		// 48000 Hz * 2 channels * 2 bytes/sample = 192000 bytes/sec
+		bytesToSilence := int(durationToSilence.Nanoseconds() * 192000 / 1e9)
+		bytesToSilence = (bytesToSilence / 4) * 4 // align to frame boundary
+
+		if bytesToSilence >= len(playBuffer) {
+			zero(playBuffer)
+			return len(playBuffer), nil
+		} else if bytesToSilence > 0 {
+			zero(playBuffer[:bytesToSilence])
+			written := stream.playAudio(playBuffer[bytesToSilence:], targetChunk)
+			fmt.Printf("\rTime: %v , \tplayAt: %v \nplayback time: %v (adjusted %d bytes)\n", now, targetChunk.playAt, startPlaybackTime, bytesToSilence)
+			return bytesToSilence + written, nil
+		}
 	}
 
-	clockDrift := stream.calcClockDrift(startTime, targetChunk)
-	if !stream.validateClockDrift(playBuffer, clockDrift, targetChunk) {
-		return len(playBuffer), nil
-	}
+	fmt.Printf("\rTime: %v , \tplayAt: %v \nplayback time: %v\n", now, targetChunk.playAt, startPlaybackTime)
+
+	// clockDrift := stream.calcClockDrift(startTime, targetChunk)
+	// if !stream.validateClockDrift(playBuffer, clockDrift, targetChunk) {
+	// 	return len(playBuffer), nil
+	// }
 
 	return stream.playAudio(playBuffer, targetChunk), nil
 }
@@ -97,8 +118,6 @@ func (stream *AudioStream) playAudio(playBuffer []byte, targetChunk AudioChunk) 
 }
 
 func (stream *AudioStream) validateClockDrift(playBuffer []byte, clockDrift time.Duration, targetChunk AudioChunk) bool {
-	fmt.Println("clockdrift", clockDrift)
-
 	if clockDrift < -20*time.Millisecond {
 		zero(playBuffer)
 		return false

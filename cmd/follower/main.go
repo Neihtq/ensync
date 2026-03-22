@@ -57,7 +57,7 @@ func startVisibilityService() *mdns.Server {
 	info := []string{"/connections"}
 	visibilityService, err := visibility.ExposeMDNS(cpPortInt, info)
 	if err != nil {
-		fmt.Println("Exposing mDNS failked", err.Error())
+		fmt.Println("Exposing mDNS failed", err.Error())
 	}
 
 	return visibilityService
