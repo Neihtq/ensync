@@ -74,11 +74,25 @@ func (stream *AudioStream) Read(playBuffer []byte) (int, error) {
 
 	startPlaybackTime := startTime.Add(time.Duration(targetChunk.playAt))
 	now := stream.clock.Now()
-	fmt.Printf("\rTime: %v , \tplayAt: %v \nplayback time: %v", now, targetChunk.playAt, startPlaybackTime)
+
 	if now.Before(startPlaybackTime) {
-		zero(playBuffer)
-		return len(playBuffer), nil
+		durationToSilence := startPlaybackTime.Sub(now)
+		// 48000 Hz * 2 channels * 2 bytes/sample = 192000 bytes/sec
+		bytesToSilence := int(durationToSilence.Nanoseconds() * 192000 / 1e9)
+		bytesToSilence = (bytesToSilence / 4) * 4 // align to frame boundary
+
+		if bytesToSilence >= len(playBuffer) {
+			zero(playBuffer)
+			return len(playBuffer), nil
+		} else if bytesToSilence > 0 {
+			zero(playBuffer[:bytesToSilence])
+			written := stream.playAudio(playBuffer[bytesToSilence:], targetChunk)
+			fmt.Printf("\rTime: %v , \tplayAt: %v \nplayback time: %v (adjusted %d bytes)\n", now, targetChunk.playAt, startPlaybackTime, bytesToSilence)
+			return bytesToSilence + written, nil
+		}
 	}
+
+	fmt.Printf("\rTime: %v , \tplayAt: %v \nplayback time: %v\n", now, targetChunk.playAt, startPlaybackTime)
 
 	// clockDrift := stream.calcClockDrift(startTime, targetChunk)
 	// if !stream.validateClockDrift(playBuffer, clockDrift, targetChunk) {
