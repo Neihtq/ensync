@@ -127,6 +127,9 @@ func (stream *AudioStream) bufferIsReady() bool {
 	}
 
 	if stream.chunks.Len() == 0 {
+		stream.isBuffering = true
+		stream.hasAligned = false
+		stream.alignmentSamples = nil
 		return false
 	}
 
@@ -152,7 +155,8 @@ func (stream *AudioStream) alignDelayWithCurrentTime(startTime time.Time, target
 			}
 		}
 		targetCushion := 500 * time.Millisecond
-		stream.playbackDelay = targetCushion - best
+		delay := max(targetCushion-best, 50*time.Millisecond)
+		stream.playbackDelay = delay
 
 		stream.hasAligned = true
 		stream.alignmentSamples = nil
