@@ -32,7 +32,7 @@ func NewAudioStream(clock *mirrorclock.MirrorClock) *AudioStream {
 	return &AudioStream{
 		isBuffering:   true,
 		clock:         clock,
-		playbackDelay: 100 * time.Millisecond,
+		playbackDelay: 500 * time.Millisecond,
 	}
 }
 
