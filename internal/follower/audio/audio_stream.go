@@ -18,14 +18,28 @@ type AudioChunk struct {
 }
 
 type AudioStream struct {
-	mu               sync.Mutex
-	chunks           deque.Deque[AudioChunk]
-	bufferSize       int
-	isBuffering      bool
-	clock            *mirrorclock.MirrorClock
-	playbackDelay    time.Duration
-	hasAligned       bool
-	alignmentSamples []time.Duration
+	mu                sync.Mutex
+	chunks            deque.Deque[AudioChunk]
+	bufferSize        int
+	isBuffering       bool
+	clock             *mirrorclock.MirrorClock
+	playbackDelay     time.Duration
+	hasAligned        bool
+	alignmentSamples  []time.Duration
+	hasStartedPlaying bool
+	sampleRate        int
+}
+
+func (stream *AudioStream) SetSampleRate(sr int) {
+	stream.mu.Lock()
+	defer stream.mu.Unlock()
+	stream.sampleRate = sr
+}
+
+func (stream *AudioStream) GetSampleRate() int {
+	stream.mu.Lock()
+	defer stream.mu.Unlock()
+	return stream.sampleRate
 }
 
 func NewAudioStream(clock *mirrorclock.MirrorClock) *AudioStream {
@@ -68,18 +82,23 @@ func (stream *AudioStream) Read(playBuffer []byte) (int, error) {
 		return len(playBuffer), nil
 	}
 
-	// if !stream.hasAligned {
-	// 	stream.alignDelayWithCurrentTime(startTime, targetChunk)
-	// }
-
 	startPlaybackTime := startTime.Add(time.Duration(targetChunk.playAt))
 	now := stream.clock.Now()
 
-	if now.Before(startPlaybackTime) {
+	if !stream.hasStartedPlaying && now.Before(startPlaybackTime) {
 		durationToSilence := startPlaybackTime.Sub(now)
-		// 48000 Hz * 2 channels * 2 bytes/sample = 192000 bytes/sec
-		bytesToSilence := int(durationToSilence.Nanoseconds() * 192000 / 1e9)
-		bytesToSilence = (bytesToSilence / 4) * 4 // align to frame boundary
+
+		var bytesPerSec int
+		if stream.sampleRate > 0 {
+			channels := 2
+			bytesPerSample := 2
+			bytesPerSec = stream.sampleRate * channels * bytesPerSample
+		} else {
+			bytesPerSec = 192000 // Fallback to 48000 Hz
+		}
+
+		bytesToSilence := int(durationToSilence.Nanoseconds() * int64(bytesPerSec) / 1e9)
+		bytesToSilence = (bytesToSilence / 4) * 4
 
 		if bytesToSilence >= len(playBuffer) {
 			zero(playBuffer)
@@ -88,16 +107,12 @@ func (stream *AudioStream) Read(playBuffer []byte) (int, error) {
 			zero(playBuffer[:bytesToSilence])
 			written := stream.playAudio(playBuffer[bytesToSilence:], targetChunk)
 			fmt.Printf("\rTime: %v , \tplayAt: %v \nplayback time: %v (adjusted %d bytes)\n", now, targetChunk.playAt, startPlaybackTime, bytesToSilence)
+			stream.hasStartedPlaying = true
 			return bytesToSilence + written, nil
 		}
 	}
-
+	stream.hasStartedPlaying = true
 	fmt.Printf("\rTime: %v , \tplayAt: %v \nplayback time: %v\n", now, targetChunk.playAt, startPlaybackTime)
-
-	// clockDrift := stream.calcClockDrift(startTime, targetChunk)
-	// if !stream.validateClockDrift(playBuffer, clockDrift, targetChunk) {
-	// 	return len(playBuffer), nil
-	// }
 
 	return stream.playAudio(playBuffer, targetChunk), nil
 }
@@ -132,14 +147,6 @@ func (stream *AudioStream) validateClockDrift(playBuffer []byte, clockDrift time
 	return true
 }
 
-func (stream *AudioStream) calcClockDrift(startTime time.Time, targetChunk AudioChunk) time.Duration {
-	targetPlayTime := startTime.Add(time.Duration(targetChunk.playAt)).Add(stream.playbackDelay)
-	now := stream.clock.Now()
-	drift := now.Sub(targetPlayTime)
-
-	return drift
-}
-
 func (stream *AudioStream) bufferIsReady() bool {
 	if stream.isBuffering {
 		if stream.bufferSize < startupBytes {
@@ -154,27 +161,6 @@ func (stream *AudioStream) bufferIsReady() bool {
 	}
 
 	return true
-}
-
-func (stream *AudioStream) alignDelayWithCurrentTime(startTime time.Time, targetChunk AudioChunk) {
-	targetPlayTime := startTime.Add(time.Duration(targetChunk.playAt))
-	now := stream.clock.Now()
-
-	currentOffset := now.Sub(targetPlayTime)
-	stream.alignmentSamples = append(stream.alignmentSamples, currentOffset)
-
-	const alignmentSampleThreshold = 10
-	if len(stream.alignmentSamples) >= alignmentSampleThreshold {
-		var total time.Duration
-		for _, sample := range stream.alignmentSamples {
-			total += sample
-		}
-		avgDrift := total / alignmentSampleThreshold
-		stream.playbackDelay += avgDrift
-
-		stream.hasAligned = true
-		stream.alignmentSamples = nil
-	}
 }
 
 func zero(buffer []byte) {

@@ -18,7 +18,7 @@ import (
 
 const (
 	logPrefix  = "[AudioStreamer]"
-	headerSize = 16
+	headerSize = 20
 )
 
 type AudioStreamer struct {
@@ -83,7 +83,7 @@ func (streamer *AudioStreamer) StreamAudioToAll() {
 			break
 		}
 
-		envelope := streamer.prepareEnvelope(buffer, dataSize)
+		envelope := streamer.prepareEnvelope(buffer, dataSize, int(audioSource.SampleRate))
 
 		for _, f := range streamer.Followers.Followers {
 			streamAudioToFollower(envelope, f)
@@ -94,12 +94,13 @@ func (streamer *AudioStreamer) StreamAudioToAll() {
 	}
 }
 
-func (streamer *AudioStreamer) prepareEnvelope(buffer []byte, packetSize int) []byte {
+func (streamer *AudioStreamer) prepareEnvelope(buffer []byte, packetSize int, sampleRate int) []byte {
 	absoluteStartTime := streamer.MediaClock.GetStartTimeInt64()
 	playAt := streamer.MediaClock.GetSentTimeInt64()
 	envelope := make([]byte, headerSize+packetSize)
 	binary.BigEndian.PutUint64(envelope[0:8], uint64(absoluteStartTime))
 	binary.BigEndian.PutUint64(envelope[8:16], uint64(playAt))
+	binary.BigEndian.PutUint32(envelope[16:20], uint32(sampleRate))
 	copy(envelope[headerSize:], buffer[:packetSize])
 
 	return envelope
