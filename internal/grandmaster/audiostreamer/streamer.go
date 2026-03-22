@@ -27,7 +27,7 @@ type AudioStreamer struct {
 	cancel context.CancelFunc
 
 	Followers      *follower.Followers
-	TrackQueue     deque.Deque[string] // List of tracks
+	TrackQueue     deque.Deque[string]
 	Interval       time.Duration
 	SourceProvider SourceProvider
 	MediaClock     clock.MediaClock
