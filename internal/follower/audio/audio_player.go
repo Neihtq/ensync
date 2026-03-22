@@ -17,9 +17,9 @@ func (er *MockErrorReporter) Err() error {
 	return er.mockErr
 }
 
-func NewPlayer(audioStream *AudioStream) (*oto.Context, *oto.Player) {
+func NewPlayer(audioStream *AudioStream, sampleRate int) (*oto.Context, *oto.Player) {
 	op := &oto.NewContextOptions{
-		SampleRate:   48000,
+		SampleRate:   sampleRate,
 		ChannelCount: 2,
 		Format:       oto.FormatSignedInt16LE,
 	}
