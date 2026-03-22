@@ -84,7 +84,7 @@ func (stream *AudioStream) Read(playBuffer []byte) (int, error) {
 	startPlaybackTime := startTime.Add(time.Duration(targetChunk.playAt))
 	now := stream.clock.Now()
 
-	if !stream.hasStartedPlaying && now.Before(startPlaybackTime) {
+	if now.Before(startPlaybackTime) {
 		durationToSilence := startPlaybackTime.Sub(now)
 
 		var bytesPerSec int
@@ -154,6 +154,8 @@ func (stream *AudioStream) bufferIsReady() bool {
 	}
 
 	if stream.chunks.Len() == 0 {
+		stream.isBuffering = true
+		stream.hasStartedPlaying = false
 		return false
 	}
 

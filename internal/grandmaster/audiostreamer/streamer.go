@@ -91,6 +91,8 @@ func (streamer *AudioStreamer) StreamAudioToAll() {
 
 		durationSent := int64(dataSize) * 1e9 / (audioSource.SampleRate * audioSource.Channels * 2)
 		streamer.MediaClock.AddToSentTime(durationSent)
+
+		time.Sleep(2 * time.Millisecond)
 	}
 }
 
