@@ -77,18 +77,19 @@ func (streamer *AudioStreamer) StreamAudioToAll() {
 			continue
 		}
 
-		n, err := audioSource.Read(buffer)
-		if n == 0 || err != nil {
-			logging.Log(logPrefix, "Exiting play loop: n="+strconv.Itoa(n)+" err="+err.Error())
+		dataSize, err := audioSource.Read(buffer)
+		if dataSize == 0 || err != nil {
+			logging.Log(logPrefix, "Exiting play loop: n="+strconv.Itoa(dataSize)+" err="+err.Error())
 			break
 		}
 
-		envelope := streamer.prepareEnvelope(buffer, n)
+		envelope := streamer.prepareEnvelope(buffer, dataSize)
 
 		for _, f := range streamer.Followers.Followers {
 			streamAudioToFollower(envelope, f)
 		}
-		durationSent := int64(n) * 1e9 / (audioSource.SampleRate * audioSource.Channels * 2)
+
+		durationSent := int64(dataSize) * 1e9 / (audioSource.SampleRate * audioSource.Channels * 2)
 		streamer.MediaClock.AddToSentTime(durationSent)
 	}
 }
