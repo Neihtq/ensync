@@ -64,7 +64,7 @@ func (clock *MirrorClock) UpdateOffset(measuredOffset int64, delay int64) {
 		return
 	}
 
-	alpha := 0.02
+	alpha := 1.0 // 0.02
 	clock.Offset = clock.Offset*(1-alpha) + float64(measuredOffset)*alpha
 }
 
