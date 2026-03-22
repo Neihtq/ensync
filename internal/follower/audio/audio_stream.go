@@ -53,10 +53,10 @@ func (stream *AudioStream) Read(playBuffer []byte) (int, error) {
 	stream.mu.Lock()
 	defer stream.mu.Unlock()
 
-	if !stream.bufferIsReady() {
-		zero(playBuffer)
-		return len(playBuffer), nil
-	}
+	// if !stream.bufferIsReady() {
+	// 	zero(playBuffer)
+	// 	return len(playBuffer), nil
+	// }
 
 	targetChunk := stream.chunks.Front()
 	startTime := stream.clock.GetStartTime()
@@ -67,9 +67,16 @@ func (stream *AudioStream) Read(playBuffer []byte) (int, error) {
 		return len(playBuffer), nil
 	}
 
-	if !stream.hasAligned {
-		stream.alignDelayWithCurrentTime(startTime, targetChunk)
+	startPlaybackTime := startTime.Add(stream.playbackDelay)
+	now := stream.clock.Now()
+
+	if now.Before(startPlaybackTime) {
+		zero(playBuffer)
+		return len(playBuffer), nil
 	}
+	// if !stream.hasAligned {
+	// 	stream.alignDelayWithCurrentTime(startTime, targetChunk)
+	// }
 
 	clockDrift := stream.calcClockDrift(startTime, targetChunk)
 	if !stream.validateClockDrift(playBuffer, clockDrift, targetChunk) {
@@ -100,7 +107,7 @@ func (stream *AudioStream) validateClockDrift(playBuffer []byte, clockDrift time
 		return false
 	}
 
-	if clockDrift > 500*time.Millisecond {
+	if clockDrift > 100*time.Millisecond {
 		stream.chunks.PopFront()
 		stream.bufferSize -= len(targetChunk.data)
 		return false
