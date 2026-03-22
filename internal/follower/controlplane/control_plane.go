@@ -46,7 +46,7 @@ func (cp *ControlPlaneService) StartClockSync(writer http.ResponseWriter, reques
 	}
 
 	cp.ClockSync = clocksync.NewClockSync(cp.Clock, address)
-	go cp.ClockSync.RunClockSync(cp.stop)
+	// go cp.ClockSync.RunClockSync(cp.stop)
 	fmt.Println("Launched ClockSync service to ", address)
 
 	writer.Header().Set("Content-Type", "application/json")

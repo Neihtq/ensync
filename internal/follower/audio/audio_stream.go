@@ -1,7 +1,6 @@
 package audio
 
 import (
-	"fmt"
 	"sync"
 	"time"
 
@@ -63,7 +62,6 @@ func (stream *AudioStream) Read(playBuffer []byte) (int, error) {
 	startTime := stream.clock.GetStartTime()
 
 	if startTime.IsZero() {
-		fmt.Println("Time is Zero!")
 		stream.isBuffering = true
 		zero(playBuffer)
 		return len(playBuffer), nil
@@ -97,8 +95,6 @@ func (stream *AudioStream) playAudio(playBuffer []byte, targetChunk AudioChunk) 
 }
 
 func (stream *AudioStream) validateClockDrift(playBuffer []byte, clockDrift time.Duration, targetChunk AudioChunk) bool {
-	fmt.Println("clockdrift", clockDrift)
-
 	if clockDrift < -20*time.Millisecond {
 		zero(playBuffer)
 		return false
