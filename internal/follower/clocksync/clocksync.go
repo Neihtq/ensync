@@ -92,7 +92,7 @@ func (clockSync *ClockSync) RunClockSync(stop chan struct{}) {
 		case <-ticker.C:
 			clockSync.SendNTPRequest()
 			offset := clockSync.Clock.GetOffset()
-			fmt.Printf("\rOffset: %d", offset)
+			fmt.Printf("\rOffset: %f", offset)
 		}
 	}
 }
