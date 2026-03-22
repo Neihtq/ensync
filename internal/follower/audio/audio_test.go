@@ -145,8 +145,8 @@ func sendTestUDPPacket(t *testing.T, url string, stop chan struct{}) {
 		t.Fatalf("Failed to dial server: %v", err)
 	}
 
-	header := make([]byte, 8)
-	binary.BigEndian.PutUint64(header, uint64(time.Now().Nanosecond()))
+	header := make([]byte, 20)
+	binary.BigEndian.PutUint64(header[:8], uint64(time.Now().Nanosecond()))
 	payload := []byte("test message")
 	envelope := append(header, payload...)
 

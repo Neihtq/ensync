@@ -11,7 +11,7 @@ import (
 	"ensync/internal/follower/mirrorclock"
 )
 
-const headerSize = 16
+const headerSize = 20
 
 func expose(
 	url string,
@@ -39,6 +39,7 @@ func expose(
 	}()
 
 	buffer := make([]byte, headerSize+3528)
+	var playerInitDone bool
 	for {
 		numBytes, _, err := conn.ReadFromUDP(buffer)
 		if err != nil {
@@ -47,10 +48,18 @@ func expose(
 
 		absoluteStartTime := int64(binary.BigEndian.Uint64(buffer[:8]))
 		playAt := int64(binary.BigEndian.Uint64(buffer[8:16]))
+		sampleRate := binary.BigEndian.Uint32(buffer[16:20])
 		audio := buffer[headerSize:numBytes]
 
 		if clock.GetStartTime().IsZero() || clock.GetStartTimeInt64() != absoluteStartTime {
 			clock.InitStartTime(absoluteStartTime)
+		}
+
+		if sampleRate > 0 && (!playerInitDone || audioStream.GetSampleRate() != int(sampleRate)) {
+			audioStream.SetSampleRate(int(sampleRate))
+			_, player := NewPlayer(audioStream, int(sampleRate))
+			go checkPlayerError(player, 1*time.Second)
+			playerInitDone = true
 		}
 
 		audioStream.WriteToBuffer(audio, playAt)
@@ -73,12 +82,8 @@ func LaunchAudioServer(
 	stop chan struct{},
 ) {
 	audioStream := NewAudioStream(clock)
-	context, player := NewPlayer(audioStream)
-	fmt.Println("Context {}, Player {}", context, player)
 
 	localIPAddress := ipProvider.GetIP().String()
 	url := localIPAddress + port
 	go expose(url, audioStream, clock, stop)
-
-	go checkPlayerError(player, 1*time.Second)
 }

@@ -89,7 +89,7 @@ func main() {
 	fmt.Println("Continue? [y]es")
 	fmt.Scan(&input)
 	if input == "y" {
-		filePath := "./assets/test_audio.mp3"
+		filePath := "./assets/test.mp3"
 		audioStreamer.AddToQueue(filePath)
 	}
 
