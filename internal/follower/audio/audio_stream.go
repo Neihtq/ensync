@@ -72,7 +72,7 @@ func (stream *AudioStream) Read(playBuffer []byte) (int, error) {
 	// 	stream.alignDelayWithCurrentTime(startTime, targetChunk)
 	// }
 
-	startPlaybackTime := startTime.Add(stream.playbackDelay)
+	startPlaybackTime := startTime.Add(time.Duration(targetChunk.playAt))
 	now := stream.clock.Now()
 	fmt.Printf("\rTime: %v ,\nplayback time: %v", now, startPlaybackTime)
 	if now.Before(startPlaybackTime) {
