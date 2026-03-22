@@ -71,11 +71,12 @@ func (stream *AudioStream) Read(playBuffer []byte) (int, error) {
 	startPlaybackTime := startTime.Add(stream.playbackDelay)
 	now := stream.clock.Now()
 
-	if now.Before(startPlaybackTime) {
+	if now.Before(startPlaybackTime) || stream.bufferSize < startupBytes {
 		fmt.Println("too early")
 		zero(playBuffer)
 		return len(playBuffer), nil
 	}
+
 	// if !stream.hasAligned {
 	// 	stream.alignDelayWithCurrentTime(startTime, targetChunk)
 	// }
@@ -137,9 +138,9 @@ func (stream *AudioStream) bufferIsReady() bool {
 	// }
 
 	if stream.chunks.Len() == 0 {
-		stream.isBuffering = true
-		stream.hasAligned = false
-		stream.alignmentSamples = nil
+		// stream.isBuffering = true
+		// stream.hasAligned = false
+		// stream.alignmentSamples = nil
 		return false
 	}
 
