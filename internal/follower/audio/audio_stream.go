@@ -53,14 +53,33 @@ func (stream *AudioStream) WriteToBuffer(data []byte, playAt int64) {
 	stream.mu.Lock()
 	defer stream.mu.Unlock()
 
+	var popped []AudioChunk
+	for stream.chunks.Len() > 0 && stream.chunks.Back().playAt >= playAt {
+		back := stream.chunks.Back()
+		if back.playAt == playAt {
+			// Duplicate chunk. Discard entirely.
+			for i := len(popped) - 1; i >= 0; i-- {
+				stream.chunks.PushBack(popped[i])
+			}
+			return
+		}
+		popped = append(popped, stream.chunks.PopBack())
+	}
+
 	tempBuffer := make([]byte, len(data))
 	numBytes := copy(tempBuffer, data)
-
-	stream.chunks.PushBack(AudioChunk{
+	newChunk := AudioChunk{
 		data:   tempBuffer,
 		playAt: playAt,
-	})
+	}
+
+	stream.chunks.PushBack(newChunk)
 	stream.bufferSize += numBytes
+
+	// Reinsert out-of-order chunks so the stream is monotonically rising
+	for i := len(popped) - 1; i >= 0; i-- {
+		stream.chunks.PushBack(popped[i])
+	}
 }
 
 func (stream *AudioStream) Read(playBuffer []byte) (int, error) {
@@ -86,6 +105,13 @@ func (stream *AudioStream) Read(playBuffer []byte) (int, error) {
 
 	if now.Before(startPlaybackTime) {
 		durationToSilence := startPlaybackTime.Sub(now)
+
+		// Ignore minor clock jitter padding mid-stream to prevent static pops.
+		// Actual missing chunk gaps (18ms+) will rightfully trigger chronological zeroes.
+		if stream.hasStartedPlaying && durationToSilence < 10*time.Millisecond {
+			stream.hasStartedPlaying = true
+			return stream.playAudio(playBuffer, targetChunk), nil
+		}
 
 		var bytesPerSec int
 		if stream.sampleRate > 0 {
