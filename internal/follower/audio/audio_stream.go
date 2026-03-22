@@ -71,10 +71,18 @@ func (stream *AudioStream) Read(playBuffer []byte) (int, error) {
 	// 	stream.alignDelayWithCurrentTime(startTime, targetChunk)
 	// }
 
-	clockDrift := stream.calcClockDrift(startTime, targetChunk)
-	if !stream.validateClockDrift(playBuffer, clockDrift, targetChunk) {
+	startPlaybackTime := startTime.Add(stream.playbackDelay)
+	now := stream.clock.Now()
+
+	if now.Before(startPlaybackTime) {
+		zero(playBuffer)
 		return len(playBuffer), nil
 	}
+
+	// clockDrift := stream.calcClockDrift(startTime, targetChunk)
+	// if !stream.validateClockDrift(playBuffer, clockDrift, targetChunk) {
+	// 	return len(playBuffer), nil
+	// }
 
 	return stream.playAudio(playBuffer, targetChunk), nil
 }
