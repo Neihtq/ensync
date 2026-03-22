@@ -1,7 +1,6 @@
 package audio
 
 import (
-	"fmt"
 	"sync"
 	"time"
 
@@ -63,7 +62,6 @@ func (stream *AudioStream) Read(playBuffer []byte) (int, error) {
 	startTime := stream.clock.GetStartTime()
 
 	if startTime.IsZero() {
-		fmt.Println("Time is Zero!")
 		stream.isBuffering = true
 		zero(playBuffer)
 		return len(playBuffer), nil
@@ -97,8 +95,6 @@ func (stream *AudioStream) playAudio(playBuffer []byte, targetChunk AudioChunk) 
 }
 
 func (stream *AudioStream) validateClockDrift(playBuffer []byte, clockDrift time.Duration, targetChunk AudioChunk) bool {
-	fmt.Println("clockdrift", clockDrift)
-
 	if clockDrift < -20*time.Millisecond {
 		zero(playBuffer)
 		return false
@@ -142,16 +138,21 @@ func (stream *AudioStream) alignDelayWithCurrentTime(startTime time.Time, target
 	now := stream.clock.Now()
 
 	currentOffset := now.Sub(targetPlayTime)
+	if currentOffset > 200*time.Millisecond || currentOffset < -200*time.Millisecond {
+		return
+	}
 	stream.alignmentSamples = append(stream.alignmentSamples, currentOffset)
 
-	const alignmentSampleThreshold = 10
+	const alignmentSampleThreshold = 20
 	if len(stream.alignmentSamples) >= alignmentSampleThreshold {
-		var total time.Duration
+		best := stream.alignmentSamples[0]
 		for _, sample := range stream.alignmentSamples {
-			total += sample
+			if sample < best {
+				best = sample
+			}
 		}
-		avgDrift := total / alignmentSampleThreshold
-		stream.playbackDelay += avgDrift
+		targetCushion := 500 * time.Millisecond
+		stream.playbackDelay = targetCushion - best
 
 		stream.hasAligned = true
 		stream.alignmentSamples = nil
