@@ -53,10 +53,10 @@ func (stream *AudioStream) Read(playBuffer []byte) (int, error) {
 	stream.mu.Lock()
 	defer stream.mu.Unlock()
 
-	// if !stream.bufferIsReady() {
-	// 	zero(playBuffer)
-	// 	return len(playBuffer), nil
-	// }
+	if !stream.bufferIsReady() {
+		zero(playBuffer)
+		return len(playBuffer), nil
+	}
 
 	targetChunk := stream.chunks.Front()
 	startTime := stream.clock.GetStartTime()
