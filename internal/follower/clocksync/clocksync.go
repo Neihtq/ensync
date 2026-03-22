@@ -48,7 +48,6 @@ func (clockSync *ClockSync) SendNTPRequest() error {
 	binary.BigEndian.PutUint64(packet, uint64(followerSendTime))
 	_, err := clockSync.Conn.Write(packet)
 	if err != nil {
-		fmt.Println("Error sending NTP request", err)
 		return err
 	}
 
@@ -90,7 +89,10 @@ func (clockSync *ClockSync) RunClockSync(stop chan struct{}) {
 			fmt.Println("Stopping Clocksync...")
 			return
 		case <-ticker.C:
-			clockSync.SendNTPRequest()
+			err := clockSync.SendNTPRequest()
+			if err != nil {
+				fmt.Println("ClockSyn service unavailable")
+			}
 		}
 	}
 }

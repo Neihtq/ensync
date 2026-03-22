@@ -1,7 +1,6 @@
 package audio
 
 import (
-	"fmt"
 	"sync"
 	"time"
 
@@ -106,13 +105,11 @@ func (stream *AudioStream) Read(playBuffer []byte) (int, error) {
 		} else if bytesToSilence > 0 {
 			zero(playBuffer[:bytesToSilence])
 			written := stream.playAudio(playBuffer[bytesToSilence:], targetChunk)
-			fmt.Printf("\rTime: %v , \tplayAt: %v \nplayback time: %v (adjusted %d bytes)\n", now, targetChunk.playAt, startPlaybackTime, bytesToSilence)
 			stream.hasStartedPlaying = true
 			return bytesToSilence + written, nil
 		}
 	}
 	stream.hasStartedPlaying = true
-	fmt.Printf("\rTime: %v , \tplayAt: %v \nplayback time: %v\n", now, targetChunk.playAt, startPlaybackTime)
 
 	return stream.playAudio(playBuffer, targetChunk), nil
 }
