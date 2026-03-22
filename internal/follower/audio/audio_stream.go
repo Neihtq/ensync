@@ -9,7 +9,7 @@ import (
 	"github.com/gammazero/deque"
 )
 
-const startupBytes = 150_000
+const startupBytes = 300_000
 
 type AudioChunk struct {
 	data   []byte
