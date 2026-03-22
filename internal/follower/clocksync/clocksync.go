@@ -91,8 +91,8 @@ func (clockSync *ClockSync) RunClockSync(stop chan struct{}) {
 			return
 		case <-ticker.C:
 			clockSync.SendNTPRequest()
-			offset := clockSync.Clock.GetOffset()
-			fmt.Printf("\rOffset: %f", offset)
+			now := clockSync.Clock.Now().UnixNano()
+			fmt.Printf("\rTime: %v", now)
 		}
 	}
 }
