@@ -54,7 +54,6 @@ func prepareTimestampPacket(buffer []byte, numBytes int) []byte {
 	receivedTime := time.Now().UnixNano()
 	followerSendTime := binary.BigEndian.Uint64(buffer[:numBytes])
 	severSendTime := time.Now().UnixNano()
-	fmt.Printf("\rTime: %v", time.Now())
 	binary.BigEndian.PutUint64(packet[:8], uint64(followerSendTime))
 	binary.BigEndian.PutUint64(packet[8:16], uint64(receivedTime))
 	binary.BigEndian.PutUint64(packet[16:], uint64(severSendTime))
