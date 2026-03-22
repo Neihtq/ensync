@@ -68,24 +68,23 @@ func (stream *AudioStream) Read(playBuffer []byte) (int, error) {
 		return len(playBuffer), nil
 	}
 
-	startPlaybackTime := startTime.Add(stream.playbackDelay)
-	now := stream.clock.Now()
-
-	if now.Before(startPlaybackTime) || stream.bufferSize < startupBytes {
-		fmt.Println("too early")
-		zero(playBuffer)
-		return len(playBuffer), nil
-	}
-
-	// if !stream.hasAligned {
-	// 	stream.alignDelayWithCurrentTime(startTime, targetChunk)
-	// }
-
-	// clockDrift := stream.calcClockDrift(startTime, targetChunk)
-	// if !stream.validateClockDrift(playBuffer, clockDrift, targetChunk) {
-	// 	fmt.Println("Clockdrift not valid")
+	// startPlaybackTime := startTime.Add(stream.playbackDelay)
+	// now := stream.clock.Now()
+	//
+	// if now.Before(startPlaybackTime) {
+	// 	zero(playBuffer)
 	// 	return len(playBuffer), nil
 	// }
+
+	if !stream.hasAligned {
+		stream.alignDelayWithCurrentTime(startTime, targetChunk)
+	}
+
+	clockDrift := stream.calcClockDrift(startTime, targetChunk)
+	if !stream.validateClockDrift(playBuffer, clockDrift, targetChunk) {
+		fmt.Println("Clockdrift not valid")
+		return len(playBuffer), nil
+	}
 
 	return stream.playAudio(playBuffer, targetChunk), nil
 }
@@ -129,18 +128,18 @@ func (stream *AudioStream) calcClockDrift(startTime time.Time, targetChunk Audio
 }
 
 func (stream *AudioStream) bufferIsReady() bool {
-	// if stream.isBuffering {
-	// 	if stream.bufferSize < startupBytes {
-	// 		return false
-	// 	}
-	// 	stream.isBuffering = false
-	// 	stream.hasAligned = false
-	// }
+	if stream.isBuffering {
+		if stream.bufferSize < startupBytes {
+			return false
+		}
+		stream.isBuffering = false
+		stream.hasAligned = false
+	}
 
 	if stream.chunks.Len() == 0 {
-		// stream.isBuffering = true
-		// stream.hasAligned = false
-		// stream.alignmentSamples = nil
+		stream.isBuffering = true
+		stream.hasAligned = false
+		stream.alignmentSamples = nil
 		return false
 	}
 

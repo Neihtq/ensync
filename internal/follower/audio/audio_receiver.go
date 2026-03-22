@@ -50,7 +50,6 @@ func expose(
 		audio := buffer[headerSize:numBytes]
 
 		if clock.GetStartTime().IsZero() || clock.GetStartTimeInt64() != absoluteStartTime {
-			fmt.Println("Init Start time. Local startTime", clock.GetStartTimeInt64(), "absolute start time", absoluteStartTime)
 			clock.InitStartTime(absoluteStartTime)
 		}
 
