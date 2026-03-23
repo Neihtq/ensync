@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"ensync/internal/common/netutil"
 	"ensync/internal/follower/controlplane"
 	"ensync/internal/follower/mirrorclock"
 )
@@ -38,7 +39,7 @@ func TestSubscribeFollower(t *testing.T) {
 		t.Errorf("0 registered Followers.")
 	}
 
-	ipAddr := getOutboundIP().String()
+	ipAddr := netutil.GetOutboundIP().String()
 	expected := ipAddr + audioPort
 	registered, exists := followers.Followers[ipAddr]
 	if !exists {

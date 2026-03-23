@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"net"
 	"net/http"
 	"strings"
 
+	"ensync/internal/common/netutil"
 	"ensync/internal/grandmaster/logging"
 )
 
@@ -17,19 +17,9 @@ func logMessage(message string) {
 	logging.Log(logPrefix, message)
 }
 
-func getOutboundIP() net.IP {
-	conn, err := net.Dial("udp", "8.8.8.8:80")
-	if err != nil {
-		return nil
-	}
-	defer conn.Close()
-
-	localAddr := conn.LocalAddr().(*net.UDPAddr)
-	return localAddr.IP
-}
 
 func SubscribeFollower(followers *Followers, url string, ntpPort string) error {
-	ipAddr := getOutboundIP()
+	ipAddr := netutil.GetOutboundIP()
 	addr := ipAddr.String() + ":" + strings.Trim(ntpPort, ":")
 	fmt.Println("Subscribing ", addr)
 	data := map[string]string{"address": addr}
