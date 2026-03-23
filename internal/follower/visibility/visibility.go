@@ -10,26 +10,18 @@ import (
 	"os"
 	"strings"
 
+	"ensync/internal/common/netutil"
+
 	"github.com/hashicorp/mdns"
 )
 
 const mDNSServiceName = "_ensync._tcp"
 
-func GetOutboundIP() net.IP {
-	conn, err := net.Dial("udp", "8.8.8.8:80")
-	if err != nil {
-		return nil
-	}
-	defer conn.Close()
-
-	localAddr := conn.LocalAddr().(*net.UDPAddr)
-	return localAddr.IP
-}
 
 func ExposeMDNS(port int, info []string) (*mdns.Server, error) {
 	host, _ := os.Hostname()
 	cleanHost := strings.TrimSuffix(host, ".local")
-	ipAddr := GetOutboundIP()
+	ipAddr := netutil.GetOutboundIP()
 	service, err := mdns.NewMDNSService(
 		cleanHost,
 		mDNSServiceName,
@@ -56,7 +48,7 @@ func ExposeMDNS(port int, info []string) (*mdns.Server, error) {
 func JoinLobby(addr string, cpPort string, endpoint string) error {
 	address := "http://" + addr
 	fmt.Println("Joining Lobby to", address)
-	ipAddr := GetOutboundIP().String()
+	ipAddr := netutil.GetOutboundIP().String()
 	data := map[string]string{"address": ipAddr, "port": cpPort, "endpoint": endpoint}
 	jsonData, _ := json.Marshal(data)
 	resp, err := http.Post(address, "application/json", bytes.NewBuffer(jsonData))
