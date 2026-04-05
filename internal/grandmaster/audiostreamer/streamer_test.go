@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"ensync/internal/grandmaster/follower"
+	"ensync/internal/grandmaster/queue"
 	"ensync/internal/grandmaster/sourceprovider"
 )
 
@@ -48,9 +49,10 @@ func TestStreamAudioToAll(t *testing.T) {
 	follow := follower.Follower{AudioURL: serverAddr}
 	followers := follower.NewFollowers()
 	followers.Followers[serverAddr] = &follow
+	trackQueue := queue.NewTrackQueue()
 
 	// act
-	audioStreamer := NewAudioStreamer(followers, duration, lookAhead, &mockSourceProvider, duration)
+	audioStreamer := NewAudioStreamer(followers, duration, lookAhead, &mockSourceProvider, duration, trackQueue)
 	audioStreamer.AddToQueue(filePath)
 	audioStreamer.StreamAudioToAll()
 
@@ -68,10 +70,11 @@ func TestStreamAudioToAllLoop(t *testing.T) {
 	follow := follower.Follower{AudioURL: serverAddr}
 	followers := follower.NewFollowers()
 	followers.Followers[serverAddr] = &follow
+	trackQueue := queue.NewTrackQueue()
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	audioStreamer := NewAudioStreamer(followers, duration, lookAhead, &mockSourceProvider, duration)
+	audioStreamer := NewAudioStreamer(followers, duration, lookAhead, &mockSourceProvider, duration, trackQueue)
 	audioStreamer.ctx = ctx
 	audioStreamer.cancel = cancel
 

@@ -12,9 +12,8 @@ import (
 	"ensync/internal/grandmaster/clock"
 	"ensync/internal/grandmaster/follower"
 	"ensync/internal/grandmaster/logging"
+	"ensync/internal/grandmaster/queue"
 	"ensync/internal/grandmaster/sourceprovider"
-
-	"github.com/gammazero/deque"
 )
 
 const (
@@ -28,7 +27,7 @@ type AudioStreamer struct {
 	cancel context.CancelFunc
 
 	Followers         *follower.Followers
-	TrackQueue        deque.Deque[string]
+	TrackQueue        *queue.TrackQueue
 	StreamingInterval time.Duration
 	SourceProvider    sourceprovider.SourceProvider
 	MediaClock        clock.MediaClock
@@ -42,12 +41,14 @@ func NewAudioStreamer(
 	lookAhead int64,
 	sourceProvider sourceprovider.SourceProvider,
 	sleepInterval time.Duration,
+	trackQueue *queue.TrackQueue,
 ) *AudioStreamer {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &AudioStreamer{
 		ctx:               ctx,
 		cancel:            cancel,
 		Followers:         followers,
+		TrackQueue:        trackQueue,
 		StreamingInterval: interval,
 		LookAhead:         lookAhead,
 		SourceProvider:    sourceProvider,
@@ -57,15 +58,11 @@ func NewAudioStreamer(
 }
 
 func (streamer *AudioStreamer) AddToQueue(filePath string) {
-	streamer.mu.Lock()
-	defer streamer.mu.Unlock()
 	streamer.TrackQueue.PushBack(filePath)
 }
 
 func (streamer *AudioStreamer) StreamAudioToAll() {
-	streamer.mu.Lock()
 	filePath := streamer.TrackQueue.PopFront()
-	streamer.mu.Unlock()
 	logging.Log(logPrefix, "Stream "+filePath)
 
 	audioSource := streamer.SourceProvider.GetSource(filePath)

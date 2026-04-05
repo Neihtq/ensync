@@ -12,6 +12,7 @@ import (
 	"ensync/internal/grandmaster/discovery"
 	"ensync/internal/grandmaster/follower"
 	"ensync/internal/grandmaster/logging"
+	"ensync/internal/grandmaster/queue"
 	"ensync/internal/grandmaster/sourceprovider"
 )
 
@@ -33,12 +34,19 @@ func provideFollowers() *follower.Followers {
 	return follower.NewFollowers()
 }
 
-func provideStreamer(followers *follower.Followers, sourceProvider sourceprovider.SourceProvider) *audiostreamer.AudioStreamer {
-	log("Initialize AudioStreamer")
+func provideTrackQueue() *queue.TrackQueue {
+	return queue.NewTrackQueue()
+}
+
+func provideStreamer(
+	followers *follower.Followers,
+	sourceProvider sourceprovider.SourceProvider,
+	trackQueue *queue.TrackQueue,
+) *audiostreamer.AudioStreamer {
 	streamingInterval := 20 * time.Millisecond
 	lookAhead := (2000 * time.Millisecond).Nanoseconds()
 	sleepInterval := 100 * time.Millisecond
-	return audiostreamer.NewAudioStreamer(followers, streamingInterval, lookAhead, sourceProvider, sleepInterval)
+	return audiostreamer.NewAudioStreamer(followers, streamingInterval, lookAhead, sourceProvider, sleepInterval, trackQueue)
 }
 
 func provideClockSyncService() *clocksync.ClockSyncService {
@@ -57,14 +65,15 @@ func main() {
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
 	followers := provideFollowers()
-	sourceProvider := provideSourceProvider()
 
 	log("Start NTP service")
 	clockSyncService := provideClockSyncService()
 	go clockSyncService.ExposeNTP(stop)
 
-	log("Start AudioStreamLoop with sending interval")
-	audioStreamer := provideStreamer(followers, sourceProvider)
+	log("Start AudioStreamLoop")
+	sourceProvider := provideSourceProvider()
+	trackQueue := provideTrackQueue()
+	audioStreamer := provideStreamer(followers, sourceProvider, trackQueue)
 	go audioStreamer.StreamAudioToAllLoop(stop)
 
 	startDiscoveryService(followers)
