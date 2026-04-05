@@ -40,3 +40,15 @@ func (registry *FollowersRegistry) RegisterFollower(ipAddress string, port strin
 		registry.Registry[ipAddress] = &newFollower
 	}
 }
+
+func (registry *FollowersRegistry) GetAllFollowers() []string {
+	registry.Lock()
+	defer registry.Unlock()
+
+	followerUrls := []string{}
+	for url := range registry.Registry {
+		followerUrls = append(followerUrls, url)
+	}
+
+	return followerUrls
+}
