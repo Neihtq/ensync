@@ -1,6 +1,7 @@
 package webservice
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -8,15 +9,17 @@ import (
 	"time"
 
 	"ensync/internal/grandmaster/follower"
+	"ensync/internal/grandmaster/queue"
 	"ensync/internal/grandmaster/sourceprovider"
 )
 
 func TestNewWebServer(t *testing.T) {
 	provider := &sourceprovider.MockSourceProvider{}
 	registry := follower.NewFollowersRegistry()
+	trackQueue := queue.NewTrackQueue()
 	port := ":9999"
 
-	server := NewWebServer(port, provider, registry)
+	server := NewWebServer(port, provider, registry, trackQueue)
 	if server.Port != port {
 		t.Errorf("Expected port %s, got %s", port, server.Port)
 	}
@@ -31,7 +34,8 @@ func TestNewWebServer(t *testing.T) {
 func TestListSongs(t *testing.T) {
 	provider := &sourceprovider.MockSourceProvider{}
 	registry := follower.NewFollowersRegistry()
-	server := NewWebServer(":9999", provider, registry)
+	trackQueue := queue.NewTrackQueue()
+	server := NewWebServer(":9999", provider, registry, trackQueue)
 
 	req := httptest.NewRequest(http.MethodGet, "/songs", nil)
 	rr := httptest.NewRecorder()
@@ -66,11 +70,12 @@ func TestListSongs(t *testing.T) {
 func TestListFollowers(t *testing.T) {
 	provider := &sourceprovider.MockSourceProvider{}
 	registry := follower.NewFollowersRegistry()
+	trackQueue := queue.NewTrackQueue()
 
 	registry.RegisterFollower("192.168.1.10", "8000")
 	registry.RegisterFollower("192.168.1.11", "8000")
 
-	server := NewWebServer(":9999", provider, registry)
+	server := NewWebServer(":9999", provider, registry, trackQueue)
 
 	req := httptest.NewRequest(http.MethodGet, "/followers", nil)
 	rr := httptest.NewRecorder()
@@ -118,11 +123,62 @@ func TestListFollowers(t *testing.T) {
 	}
 }
 
+func TestPushTrack_ValidJSON(t *testing.T) {
+	provider := &sourceprovider.MockSourceProvider{}
+	registry := follower.NewFollowersRegistry()
+	trackQueue := queue.NewTrackQueue()
+	server := NewWebServer(":9999", provider, registry, trackQueue)
+
+	jsonStr := []byte(`{"trackId":"test-track.mp3"}`)
+	req := httptest.NewRequest(http.MethodPost, "/tracks", bytes.NewBuffer(jsonStr))
+	rr := httptest.NewRecorder()
+
+	server.PushTrack(rr, req)
+
+	if status := rr.Code; status != http.StatusCreated {
+		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusCreated)
+	}
+
+	// Verify track is in the queue
+	if trackQueue.Len() != 1 {
+		t.Errorf("Expected track queue to have 1 item, got %d", trackQueue.Len())
+	}
+
+	queuedTrack := trackQueue.PopFront()
+	if queuedTrack != "test-track.mp3" {
+		t.Errorf("Expected queued track to be 'test-track.mp3', got %s", queuedTrack)
+	}
+}
+
+func TestPushTrack_InvalidJSON(t *testing.T) {
+	provider := &sourceprovider.MockSourceProvider{}
+	registry := follower.NewFollowersRegistry()
+	trackQueue := queue.NewTrackQueue()
+	server := NewWebServer(":9999", provider, registry, trackQueue)
+
+	jsonStr := []byte(`{invalid-json}`) // Malformed JSON
+	req := httptest.NewRequest(http.MethodPost, "/tracks", bytes.NewBuffer(jsonStr))
+	rr := httptest.NewRecorder()
+
+	server.PushTrack(rr, req)
+
+	// Since JSON parsing should fail, expect 400 Bad Request
+	if status := rr.Code; status != http.StatusBadRequest {
+		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusBadRequest)
+	}
+
+	// Verify the queue has NOT been modified
+	if trackQueue.Len() != 0 {
+		t.Errorf("Expected track queue to be empty, got %d", trackQueue.Len())
+	}
+}
+
 func TestStartServer(t *testing.T) {
 	provider := &sourceprovider.MockSourceProvider{}
 	registry := follower.NewFollowersRegistry()
+	trackQueue := queue.NewTrackQueue()
 	// Assigning :0 lets the OS pick a random available port preventing address in use errors in tests
-	server := NewWebServer(":0", provider, registry)
+	server := NewWebServer(":0", provider, registry, trackQueue)
 
 	go func() {
 		server.StartServer()
