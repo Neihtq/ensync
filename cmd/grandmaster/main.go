@@ -9,10 +9,10 @@ import (
 
 	"ensync/internal/common/netutil"
 	"ensync/internal/grandmaster/audiostreamer"
+	"ensync/internal/grandmaster/clocksync"
 	"ensync/internal/grandmaster/discovery"
 	"ensync/internal/grandmaster/follower"
 	"ensync/internal/grandmaster/logging"
-	"ensync/internal/grandmaster/service"
 )
 
 const (
@@ -64,11 +64,8 @@ func main() {
 
 	interval := 100 * time.Millisecond
 
-	log("Initialize services")
-	clockSyncService := service.NewClockSyncService(ntpPort)
-
 	log("Start NTP service")
-	clockSyncService.Start(stop)
+	go clocksync.ExposeNTP(ntpPort, stop)
 
 	log("Start AudioStreamLoop with sending interval " + interval.String())
 	go audioStreamer.StreamAudioToAllLoop(interval, stop)
