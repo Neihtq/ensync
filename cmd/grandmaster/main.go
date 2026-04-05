@@ -29,7 +29,8 @@ func log(message string) {
 }
 
 func provideSourceProvider() sourceprovider.SourceProvider {
-	return sourceprovider.NewAudioProvider()
+	root := "./assets"
+	return sourceprovider.NewAudioProvider(root)
 }
 
 func provideFollowersRegistry() *follower.FollowersRegistry {
