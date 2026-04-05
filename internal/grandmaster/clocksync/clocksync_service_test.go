@@ -65,5 +65,11 @@ func TestExposeNTP(t *testing.T) {
 		t.Error("Server Transmit time (T3) cannot be before Receive time (T2)")
 	}
 
-	close(stop)
+	done := make(chan bool)
+	go func() {
+		close(stop)
+		time.Sleep(200 * time.Millisecond)
+		done <- true
+	}()
+	<-done
 }

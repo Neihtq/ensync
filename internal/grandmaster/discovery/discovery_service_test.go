@@ -27,7 +27,7 @@ func TestDiscoverFollower(t *testing.T) {
 	go cp.StartService(cpPort)
 	time.Sleep(20 * time.Millisecond)
 
-	followers := follower.NewFollowers()
+	registry := follower.NewFollowersRegistry()
 	ntpPort := ":9111"
 
 	addrV4 := "127.0.0.1"
@@ -43,29 +43,29 @@ func TestDiscoverFollower(t *testing.T) {
 	close(entriesCh)
 
 	// act
-	discoveryService := NewDiscoveryService(followers, ntpPort)
+	discoveryService := NewDiscoveryService(registry, ntpPort)
 	discoveryService.DiscoverFollower(entriesCh)
 }
 
 func TestDiscover(t *testing.T) {
 	t.Skip("Skipping mDNS test")
 	// arrange
-	followers := follower.NewFollowers()
+	registry := follower.NewFollowersRegistry()
 	ntpPort := ":9999"
 
 	// act
-	discoveryService := NewDiscoveryService(followers, ntpPort)
+	discoveryService := NewDiscoveryService(registry, ntpPort)
 	discoveryService.Discover()
 }
 
 func TestLobby(t *testing.T) {
 	// arrange
-	followers := follower.NewFollowers()
+	registry := follower.NewFollowersRegistry()
 	stop := make(chan struct{})
 	port := ":11111"
 
 	// assert
-	dl := NewDiscoveryLobby(followers, stop)
+	dl := NewDiscoveryLobby(registry, stop)
 	go dl.OpenLobby(port)
 
 	close(stop)
@@ -74,7 +74,7 @@ func TestLobby(t *testing.T) {
 func TestJoinLobby(t *testing.T) {
 	// arrange
 	stop := make(chan struct{})
-	followers := follower.NewFollowers()
+	registry := follower.NewFollowersRegistry()
 	visitorPort := ":11112"
 	ipAddress := "127.0.0.1"
 	endpoint := "/connections"
@@ -84,7 +84,7 @@ func TestJoinLobby(t *testing.T) {
 	writer := httptest.NewRecorder()
 
 	// act
-	dl := NewDiscoveryLobby(followers, stop)
+	dl := NewDiscoveryLobby(registry, stop)
 	dl.JoinLobby(writer, request)
 
 	// assert
@@ -99,7 +99,7 @@ func TestJoinLobby(t *testing.T) {
 
 func TestTransferVisitorsToFollowers(t *testing.T) {
 	stop := make(chan struct{})
-	followers := follower.NewFollowers()
+	registry := follower.NewFollowersRegistry()
 	visitorPort := ":11113"
 	ntpPort := ":11114"
 	ipAddress := "127.0.0.1"
@@ -109,7 +109,7 @@ func TestTransferVisitorsToFollowers(t *testing.T) {
 	request.Header.Set("Content-Type", "application/json")
 	writer := httptest.NewRecorder()
 
-	dl := NewDiscoveryLobby(followers, stop)
+	dl := NewDiscoveryLobby(registry, stop)
 	dl.JoinLobby(writer, request)
 
 	// act

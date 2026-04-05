@@ -47,8 +47,8 @@ func TestStreamAudioToAll(t *testing.T) {
 	filePath := "../../../assets/test_file.mp3"
 	mockSourceProvider := sourceprovider.MockSourceProvider{}
 	follow := follower.Follower{AudioURL: serverAddr}
-	followers := follower.NewFollowers()
-	followers.Followers[serverAddr] = &follow
+	followers := follower.NewFollowersRegistry()
+	followers.Registry[serverAddr] = &follow
 	trackQueue := queue.NewTrackQueue()
 
 	// act
@@ -68,8 +68,8 @@ func TestStreamAudioToAllLoop(t *testing.T) {
 	serverAddr := prepareTestFixtures(t)
 	mockSourceProvider := sourceprovider.MockSourceProvider{}
 	follow := follower.Follower{AudioURL: serverAddr}
-	followers := follower.NewFollowers()
-	followers.Followers[serverAddr] = &follow
+	followers := follower.NewFollowersRegistry()
+	followers.Registry[serverAddr] = &follow
 	trackQueue := queue.NewTrackQueue()
 
 	ctx, cancel := context.WithCancel(context.Background())

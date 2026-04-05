@@ -18,7 +18,7 @@ type VisitorPOSTRequest struct {
 type DiscoveryLobby struct {
 	stop      chan struct{}
 	visitors  map[string]string
-	Followers *follower.Followers
+	Followers *follower.FollowersRegistry
 }
 
 func (dl *DiscoveryLobby) TransferVisitorsToFollowers(ntpPort string) {
@@ -32,7 +32,7 @@ func (dl *DiscoveryLobby) TransferVisitorsToFollowers(ntpPort string) {
 	}
 }
 
-func NewDiscoveryLobby(followers *follower.Followers, stop chan struct{}) *DiscoveryLobby {
+func NewDiscoveryLobby(followers *follower.FollowersRegistry, stop chan struct{}) *DiscoveryLobby {
 	return &DiscoveryLobby{
 		stop:      stop,
 		visitors:  make(map[string]string),

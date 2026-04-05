@@ -2,14 +2,13 @@
 package follower
 
 import (
-	"fmt"
 	"log"
 	"net"
 	"strings"
 	"sync"
 )
 
-const followsLogPrefix = "[Followers]"
+const followsLogPrefix = "[FollowersRegistry]"
 
 type addFollowersRequest struct {
 	Address       string `json:"address"`
@@ -57,26 +56,25 @@ func NewFollower(audioURL string) Follower {
 	}
 }
 
-type Followers struct {
+type FollowersRegistry struct {
 	sync.RWMutex
-	Followers map[string]*Follower
+	Registry map[string]*Follower
 }
 
-func NewFollowers() *Followers {
-	return &Followers{
-		Followers: make(map[string]*Follower),
+func NewFollowersRegistry() *FollowersRegistry {
+	return &FollowersRegistry{
+		Registry: make(map[string]*Follower),
 	}
 }
 
-func (followers *Followers) RegisterFollower(ipAddress string, port string) {
-	followers.Lock()
-	defer followers.Unlock()
+func (registry *FollowersRegistry) RegisterFollower(ipAddress string, port string) {
+	registry.Lock()
+	defer registry.Unlock()
 
 	audioURL := ipAddress + ":" + strings.Trim(port, ":")
 
-	if _, exists := followers.Followers[ipAddress]; !exists {
-		fmt.Println("Registering new Follower", ipAddress, port)
+	if _, exists := registry.Registry[ipAddress]; !exists {
 		newFollower := NewFollower(audioURL)
-		followers.Followers[ipAddress] = &newFollower
+		registry.Registry[ipAddress] = &newFollower
 	}
 }

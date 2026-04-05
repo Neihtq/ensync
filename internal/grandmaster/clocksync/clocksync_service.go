@@ -41,8 +41,12 @@ func (service *ClockSyncService) ExposeNTP(stop chan struct{}) error {
 		case <-stop:
 			return nil
 		default:
+			conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
 			numBytes, sender, err := conn.ReadFromUDP(buffer)
 			if err != nil {
+				if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+					continue
+				}
 				fmt.Println("Error reading: ", err)
 				continue
 			}

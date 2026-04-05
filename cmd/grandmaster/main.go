@@ -30,8 +30,8 @@ func provideSourceProvider() sourceprovider.SourceProvider {
 	return sourceprovider.NewAudioProvider()
 }
 
-func provideFollowers() *follower.Followers {
-	return follower.NewFollowers()
+func provideFollowers() *follower.FollowersRegistry {
+	return follower.NewFollowersRegistry()
 }
 
 func provideTrackQueue() *queue.TrackQueue {
@@ -39,7 +39,7 @@ func provideTrackQueue() *queue.TrackQueue {
 }
 
 func provideStreamer(
-	followers *follower.Followers,
+	followers *follower.FollowersRegistry,
 	sourceProvider sourceprovider.SourceProvider,
 	trackQueue *queue.TrackQueue,
 ) *audiostreamer.AudioStreamer {
@@ -53,7 +53,7 @@ func provideClockSyncService() *clocksync.ClockSyncService {
 	return clocksync.NewClockSyncService(ntpPort)
 }
 
-func startDiscoveryService(followers *follower.Followers) {
+func startDiscoveryService(followers *follower.FollowersRegistry) {
 	log("Start Discovery Service")
 	discoveryService := discovery.NewDiscoveryService(followers, ntpPort)
 	discoveryService.Discover()

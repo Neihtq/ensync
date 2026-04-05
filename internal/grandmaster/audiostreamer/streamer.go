@@ -26,7 +26,7 @@ type AudioStreamer struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 
-	Followers         *follower.Followers
+	Followers         *follower.FollowersRegistry
 	TrackQueue        *queue.TrackQueue
 	StreamingInterval time.Duration
 	SourceProvider    sourceprovider.SourceProvider
@@ -36,7 +36,7 @@ type AudioStreamer struct {
 }
 
 func NewAudioStreamer(
-	followers *follower.Followers,
+	followers *follower.FollowersRegistry,
 	interval time.Duration,
 	lookAhead int64,
 	sourceProvider sourceprovider.SourceProvider,
@@ -86,7 +86,7 @@ func (streamer *AudioStreamer) StreamAudioToAll() {
 
 		envelope := streamer.prepareEnvelope(buffer, dataSize, int(audioSource.SampleRate))
 
-		for _, f := range streamer.Followers.Followers {
+		for _, f := range streamer.Followers.Registry {
 			streamAudioToFollower(envelope, f)
 		}
 
