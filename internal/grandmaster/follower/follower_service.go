@@ -17,8 +17,7 @@ func logMessage(message string) {
 	logging.Log(logPrefix, message)
 }
 
-
-func SubscribeFollower(followers *Followers, url string, ntpPort string) error {
+func SubscribeFollower(followersRegistry *FollowersRegistry, url string, ntpPort string) error {
 	ipAddr := netutil.GetOutboundIP()
 	addr := ipAddr.String() + ":" + strings.Trim(ntpPort, ":")
 	fmt.Println("Subscribing ", addr)
@@ -43,8 +42,8 @@ func SubscribeFollower(followers *Followers, url string, ntpPort string) error {
 	if err != nil {
 		return fmt.Errorf("server returned invalid JSON")
 	}
-	logMessage("Register follower " + result.Address)
-	followers.RegisterFollower(result.Address, result.Port)
+	logMessage("Registering follower " + result.Address)
+	followersRegistry.RegisterFollower(result.Address, result.Port)
 
 	return nil
 }

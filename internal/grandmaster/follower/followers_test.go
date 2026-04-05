@@ -21,13 +21,13 @@ func TestSubscribeFollower(t *testing.T) {
 	go cp.StartService(cpPort)
 	time.Sleep(20 * time.Millisecond)
 
-	followers := NewFollowers()
+	registry := NewFollowersRegistry()
 	endpoint := "/connections"
 	url := "127.0.0.1"
 	ntpPort := ":9111"
 
 	// act
-	err := SubscribeFollower(followers, url+cpPort+endpoint, ntpPort)
+	err := SubscribeFollower(registry, url+cpPort+endpoint, ntpPort)
 	close(stop)
 
 	// assert
@@ -35,13 +35,13 @@ func TestSubscribeFollower(t *testing.T) {
 		t.Errorf("Error subscribing follower: %s", err.Error())
 	}
 
-	if len(followers.Followers) == 0 {
+	if len(registry.Registry) == 0 {
 		t.Errorf("0 registered Followers.")
 	}
 
 	ipAddr := netutil.GetOutboundIP().String()
 	expected := ipAddr + audioPort
-	registered, exists := followers.Followers[ipAddr]
+	registered, exists := registry.Registry[ipAddr]
 	if !exists {
 		t.Errorf("Register Follower failed: Follower not found")
 	}

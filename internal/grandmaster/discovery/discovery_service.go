@@ -17,18 +17,18 @@ import (
 const mdnsName = "_ensync._tcp"
 
 type DiscoveryService struct {
-	Followers *follower.Followers
-	NTPPort   string
+	Registry *follower.FollowersRegistry
+	NTPPort  string
 }
 
-func NewDiscoveryService(followers *follower.Followers, ntpPort string) *DiscoveryService {
+func NewDiscoveryService(registry *follower.FollowersRegistry, ntpPort string) *DiscoveryService {
 	return &DiscoveryService{
-		Followers: followers,
-		NTPPort:   ntpPort,
+		Registry: registry,
+		NTPPort:  ntpPort,
 	}
 }
 
-func (ds *DiscoveryService) Discover() {
+func (ds *DiscoveryService) StartDiscovery() {
 	log.SetOutput(io.Discard)
 
 	entriesCh := make(chan *mdns.ServiceEntry, 16)
@@ -60,9 +60,9 @@ func (ds *DiscoveryService) DiscoverFollower(entriesCh chan *mdns.ServiceEntry) 
 		endpoint := entry.InfoFields[0]
 		ipAddress := entry.AddrV4.String()
 		url := ipAddress + ":" + strconv.Itoa(entry.Port) + endpoint
-		if _, exists := ds.Followers.Followers[ipAddress]; !exists {
+		if _, exists := ds.Registry.Registry[ipAddress]; !exists {
 			fmt.Println("[Discovery] Found entry ", ipAddress, endpoint, entry.Port, entry.Name)
-			follower.SubscribeFollower(ds.Followers, url, ds.NTPPort)
+			follower.SubscribeFollower(ds.Registry, url, ds.NTPPort)
 		}
 	}
 }

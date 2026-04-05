@@ -1,4 +1,5 @@
-package audiostreamer
+// Package sourceprovider provides functions and interfaces to fetch audio sources
+package sourceprovider
 
 import (
 	"io"
@@ -20,6 +21,10 @@ type SourceProvider interface {
 }
 
 type AudioProvider struct{}
+
+func NewAudioProvider() *AudioProvider {
+	return &AudioProvider{}
+}
 
 func (provider *AudioProvider) GetSource(filePath string) *Decoder {
 	audioSource, err := os.Open(filePath)

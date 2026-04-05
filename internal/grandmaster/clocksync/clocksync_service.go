@@ -11,8 +11,16 @@ import (
 
 const timeStampSize = 8
 
-func ExposeNTP(port string, stop chan struct{}) error {
-	addr, err := net.ResolveUDPAddr("udp", port)
+type ClockSyncService struct {
+	Port string
+}
+
+func NewClockSyncService(port string) *ClockSyncService {
+	return &ClockSyncService{Port: port}
+}
+
+func (service *ClockSyncService) ExposeNTP(stop chan struct{}) error {
+	addr, err := net.ResolveUDPAddr("udp", service.Port)
 	if err != nil {
 		log.Fatal(err)
 		return err
@@ -33,8 +41,12 @@ func ExposeNTP(port string, stop chan struct{}) error {
 		case <-stop:
 			return nil
 		default:
+			conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
 			numBytes, sender, err := conn.ReadFromUDP(buffer)
 			if err != nil {
+				if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+					continue
+				}
 				fmt.Println("Error reading: ", err)
 				continue
 			}

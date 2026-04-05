@@ -12,8 +12,8 @@ import (
 	"ensync/internal/grandmaster/clock"
 	"ensync/internal/grandmaster/follower"
 	"ensync/internal/grandmaster/logging"
-
-	"github.com/gammazero/deque"
+	"ensync/internal/grandmaster/queue"
+	"ensync/internal/grandmaster/sourceprovider"
 )
 
 const (
@@ -26,46 +26,47 @@ type AudioStreamer struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 
-	Followers      *follower.Followers
-	TrackQueue     deque.Deque[string]
-	Interval       time.Duration
-	SourceProvider SourceProvider
-	MediaClock     clock.MediaClock
-	LookAhead      int64
+	Followers         *follower.FollowersRegistry
+	TrackQueue        *queue.TrackQueue
+	StreamingInterval time.Duration
+	SourceProvider    sourceprovider.SourceProvider
+	MediaClock        clock.MediaClock
+	LookAhead         int64
+	SleepInterval     time.Duration
 }
 
 func NewAudioStreamer(
-	followers *follower.Followers,
+	followers *follower.FollowersRegistry,
 	interval time.Duration,
 	lookAhead int64,
-	sourceProvider SourceProvider,
+	sourceProvider sourceprovider.SourceProvider,
+	sleepInterval time.Duration,
+	trackQueue *queue.TrackQueue,
 ) *AudioStreamer {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &AudioStreamer{
-		ctx:            ctx,
-		cancel:         cancel,
-		Followers:      followers,
-		Interval:       interval,
-		LookAhead:      lookAhead,
-		SourceProvider: sourceProvider,
-		MediaClock:     *clock.NewMediaClock(),
+		ctx:               ctx,
+		cancel:            cancel,
+		Followers:         followers,
+		TrackQueue:        trackQueue,
+		StreamingInterval: interval,
+		LookAhead:         lookAhead,
+		SourceProvider:    sourceProvider,
+		MediaClock:        *clock.NewMediaClock(),
+		SleepInterval:     sleepInterval,
 	}
 }
 
 func (streamer *AudioStreamer) AddToQueue(filePath string) {
-	streamer.mu.Lock()
-	defer streamer.mu.Unlock()
 	streamer.TrackQueue.PushBack(filePath)
 }
 
 func (streamer *AudioStreamer) StreamAudioToAll() {
-	streamer.mu.Lock()
 	filePath := streamer.TrackQueue.PopFront()
-	streamer.mu.Unlock()
 	logging.Log(logPrefix, "Stream "+filePath)
 
 	audioSource := streamer.SourceProvider.GetSource(filePath)
-	ticker := time.NewTicker(streamer.Interval)
+	ticker := time.NewTicker(streamer.StreamingInterval)
 	defer ticker.Stop()
 
 	buffer := make([]byte, 3528)
@@ -85,7 +86,7 @@ func (streamer *AudioStreamer) StreamAudioToAll() {
 
 		envelope := streamer.prepareEnvelope(buffer, dataSize, int(audioSource.SampleRate))
 
-		for _, f := range streamer.Followers.Followers {
+		for _, f := range streamer.Followers.Registry {
 			streamAudioToFollower(envelope, f)
 		}
 
@@ -118,7 +119,7 @@ func streamAudioToFollower(buffer []byte, follower *follower.Follower) {
 	conn.Write(buffer)
 }
 
-func (streamer *AudioStreamer) StreamAudioToAllLoop(sleepDuration time.Duration, stop chan struct{}) {
+func (streamer *AudioStreamer) StreamAudioToAllLoop(stop chan struct{}) {
 	for {
 		select {
 		case <-stop:
@@ -128,7 +129,7 @@ func (streamer *AudioStreamer) StreamAudioToAllLoop(sleepDuration time.Duration,
 			streamer.mu.Lock()
 			if streamer.TrackQueue.Len() == 0 {
 				streamer.mu.Unlock()
-				time.Sleep(sleepDuration)
+				time.Sleep(streamer.SleepInterval)
 				continue
 			}
 			streamer.MediaClock = *clock.NewMediaClock()

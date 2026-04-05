@@ -13,8 +13,9 @@ func TestExposeNTP(t *testing.T) {
 	serverAddrStr := "127.0.0.1:10123"
 
 	// ct
+	clockSyncService := NewClockSyncService(serverAddrStr)
 	go func() {
-		if err := ExposeNTP(serverAddrStr, stop); err != nil {
+		if err := clockSyncService.ExposeNTP(stop); err != nil {
 			t.Errorf("ExposeNTP failed: Server exited with error: %v", err)
 		}
 	}()
@@ -64,5 +65,11 @@ func TestExposeNTP(t *testing.T) {
 		t.Error("Server Transmit time (T3) cannot be before Receive time (T2)")
 	}
 
-	close(stop)
+	done := make(chan bool)
+	go func() {
+		close(stop)
+		time.Sleep(200 * time.Millisecond)
+		done <- true
+	}()
+	<-done
 }
