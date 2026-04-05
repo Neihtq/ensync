@@ -50,8 +50,7 @@ func (server *WebServer) StartServer() {
 }
 
 func (server *WebServer) listSongs(writer http.ResponseWriter, _ *http.Request) {
-	songs := []string{"track1", "track2"}
-
+	songs := server.SourceProvider.ListSongs()
 	writer.Header().Set("Content-Type", "application/json")
 
 	response := map[string][]string{

@@ -3,6 +3,7 @@ package sourceprovider
 
 import (
 	"io"
+	"io/fs"
 	"os"
 	"strings"
 
@@ -18,12 +19,16 @@ type Decoder struct {
 
 type SourceProvider interface {
 	GetSource(filePath string) *Decoder
+	ListSongs() []string
 }
 
-type AudioProvider struct{}
+type AudioProvider struct {
+	root fs.FS
+}
 
-func NewAudioProvider() *AudioProvider {
-	return &AudioProvider{}
+func NewAudioProvider(root string) *AudioProvider {
+	dir := os.DirFS(root)
+	return &AudioProvider{root: dir}
 }
 
 func (provider *AudioProvider) GetSource(filePath string) *Decoder {
@@ -45,7 +50,16 @@ func (provider *AudioProvider) GetSource(filePath string) *Decoder {
 	}
 }
 
+func (provider *AudioProvider) ListSongs() []string {
+	files, _ := fs.Glob(provider.root, "*.mp3")
+	return files
+}
+
 type MockSourceProvider struct{}
+
+func (provider *MockSourceProvider) ListSongs() []string {
+	return []string{"mock1", "mock2"}
+}
 
 func (provider *MockSourceProvider) GetSource(filePath string) *Decoder {
 	reader := strings.NewReader(filePath)
