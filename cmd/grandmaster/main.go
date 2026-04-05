@@ -14,12 +14,14 @@ import (
 	"ensync/internal/grandmaster/logging"
 	"ensync/internal/grandmaster/queue"
 	"ensync/internal/grandmaster/sourceprovider"
+	"ensync/internal/grandmaster/webservice"
 )
 
 const (
 	logPrefix           = "[Main]"
 	followerServicePort = ":8080"
 	ntpPort             = ":9090"
+	webPort             = ":9999"
 )
 
 func log(message string) {
@@ -57,6 +59,10 @@ func provideDiscoveryService(registry *follower.FollowersRegistry) *discovery.Di
 	return discovery.NewDiscoveryService(registry, ntpPort)
 }
 
+func provideWebserver() *webservice.WebServer {
+	return webservice.NewWebServer(webPort)
+}
+
 func main() {
 	stop := make(chan struct{})
 	sigChan := make(chan os.Signal, 1)
@@ -77,6 +83,10 @@ func main() {
 	log("Start Discovery Service")
 	discoveryService := provideDiscoveryService(followersRegistry)
 	discoveryService.StartDiscovery()
+
+	log("Start Web Server")
+	webServer := provideWebserver()
+	go webServer.StartServer()
 
 	var input string
 	fmt.Println("Continue? [y]es")
