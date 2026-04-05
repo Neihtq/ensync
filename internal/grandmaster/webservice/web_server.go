@@ -15,10 +15,11 @@ func NewWebServer(port string) *WebServer {
 }
 
 func (server *WebServer) StartServer() {
-	fileServer := http.FileServer(http.Dir("./static/"))
-	http.Handle("/", fileServer)
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "./static/index.html")
+	})
 
 	fmt.Println("Webserver running on port", server.Port)
-	mux := http.NewServeMux()
 	http.ListenAndServe(server.Port, mux)
 }
