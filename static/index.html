@@ -1,11 +1,330 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
+
+<head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simple Server</title>
-  </head>
-  <body>
-    <h1>Hello World!</h1>
-  </body>
+    <title>NSync Grandmaster</title>
+    <style>
+        body {
+            background-color: #008080;
+            /* Classic Windows 95 Desktop Background */
+            font-family: 'MS Sans Serif', Tahoma, Geneva, Verdana, sans-serif;
+            color: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            ImageRendering: pixelated;
+        }
+
+        /* Classic Windows dialog container */
+        .window {
+            background-color: #c0c0c0;
+            border-top: 2px solid #ffffff;
+            border-left: 2px solid #ffffff;
+            border-right: 2px solid #000000;
+            border-bottom: 2px solid #000000;
+            padding: 2px;
+            width: 600px;
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.5);
+        }
+
+        .window-header {
+            background-color: #000080;
+            color: white;
+            padding: 3px 5px;
+            font-weight: bold;
+            font-size: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* X button in header */
+        .window-header .close-btn {
+            background-color: #c0c0c0;
+            color: #000;
+            border-top: 2px solid #ffffff;
+            border-left: 2px solid #ffffff;
+            border-right: 2px solid #000000;
+            border-bottom: 2px solid #000000;
+            font-weight: bold;
+            font-size: 12px;
+            width: 16px;
+            height: 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: default;
+        }
+
+        .window-header .close-btn:active {
+            border-top: 2px solid #000000;
+            border-left: 2px solid #000000;
+            border-right: 2px solid #ffffff;
+            border-bottom: 2px solid #ffffff;
+        }
+
+        .window-content {
+            padding: 15px;
+            display: flex;
+            gap: 20px;
+        }
+
+        .left-pane,
+        .right-pane {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .left-pane {
+            flex: 2;
+        }
+
+        .right-pane {
+            flex: 1;
+        }
+
+        h2 {
+            font-size: 13px;
+            margin-top: 0;
+            margin-bottom: 5px;
+            font-weight: normal;
+        }
+
+        /* Sunken effect for lists/inputs */
+        .sunken-panel {
+            background: #ffffff;
+            border-top: 2px solid #808080;
+            border-left: 2px solid #808080;
+            border-right: 2px solid #ffffff;
+            border-bottom: 2px solid #ffffff;
+            box-shadow: inset 1px 1px 0px #000000;
+        }
+
+        select {
+            width: 100%;
+            height: 200px;
+            font-family: 'MS Sans Serif', Tahoma, Geneva, sans-serif;
+            font-size: 12px;
+            padding: 2px;
+            margin-bottom: 15px;
+            outline: none;
+        }
+
+        /* Scrollbar styling for that retro look, if supported */
+        select::-webkit-scrollbar {
+            width: 16px;
+            background: #dfdfdf;
+        }
+
+        select::-webkit-scrollbar-thumb {
+            background: #c0c0c0;
+            border-top: 1px solid #fff;
+            border-left: 1px solid #fff;
+            border-right: 1px solid #000;
+            border-bottom: 1px solid #000;
+        }
+
+        /* Classic generic button style */
+        .btn {
+            background-color: #c0c0c0;
+            border-top: 2px solid #ffffff;
+            border-left: 2px solid #ffffff;
+            border-right: 2px solid #000000;
+            border-bottom: 2px solid #000000;
+            padding: 4px 10px;
+            font-family: 'MS Sans Serif', Tahoma, Geneva, sans-serif;
+            font-size: 12px;
+            cursor: pointer;
+            outline: 1px solid #000000;
+            outline-offset: -5px;
+        }
+
+        .btn:active:not(:disabled) {
+            border-top: 2px solid #000000;
+            border-left: 2px solid #000000;
+            border-right: 2px solid #ffffff;
+            border-bottom: 2px solid #ffffff;
+            padding: 5px 9px 3px 11px;
+            /* visual push effect */
+        }
+
+        .btn:disabled {
+            color: #808080;
+            text-shadow: 1px 1px 0px #ffffff;
+        }
+
+        /* Follower list styling - non-scrollable as per request */
+        .follower-container {
+            height: 200px;
+            padding: 5px;
+            overflow: hidden;
+            /* Not scrollable */
+        }
+
+        ul {
+            list-style-type: square;
+            margin: 0;
+            padding-left: 15px;
+            font-size: 12px;
+        }
+
+        li {
+            padding-bottom: 3px;
+        }
+
+        /* Notification Dialog Overlay */
+        #notification {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 100;
+        }
+
+        .notification-content {
+            padding: 20px 20px 20px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .notification-content p {
+            font-size: 12px;
+            margin-bottom: 20px;
+        }
+
+        .notification-btn-container {
+            width: 100%;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="window">
+        <div class="window-header">
+            <span>NSync</span>
+        </div>
+        <div class="window-content">
+            <div class="left-pane">
+                <h2>Available Songs</h2>
+                <select id="songs-list" size="10" class="sunken-panel"></select>
+                <button id="push-btn" class="btn" disabled>Add Selected Track To Queue</button>
+            </div>
+            <div class="right-pane">
+                <h2>Followers</h2>
+                <div class="sunken-panel follower-container">
+                    <ul id="followers-list"></ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="notification" class="window" style="width: 300px;">
+        <div class="window-header">
+            <span>Success</span>
+            <div class="close-btn" onclick="document.getElementById('notification').style.display='none'">X</div>
+        </div>
+        <div class="notification-content">
+            <p id="notif-msg">Track pushed successfully!</p>
+            <div class="notification-btn-container">
+                <button class="btn" onclick="document.getElementById('notification').style.display='none'"
+                    style="width: 80px;">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const songsList = document.getElementById('songs-list');
+            const followersList = document.getElementById('followers-list');
+            const pushBtn = document.getElementById('push-btn');
+            const notification = document.getElementById('notification');
+            const notifMsg = document.getElementById('notif-msg');
+
+            // Load songs
+            fetch('/songs')
+                .then(res => res.json())
+                .then(data => {
+                    if (data && data.songs) {
+                        data.songs.forEach(song => {
+                            const option = document.createElement('option');
+                            option.value = song;
+                            option.textContent = song;
+                            songsList.appendChild(option);
+                        });
+                    }
+                })
+                .catch(err => {
+                    console.error("Failed to load songs:", err);
+                });
+
+            // Load followers
+            fetch('/followers')
+                .then(res => res.json())
+                .then(data => {
+                    if (data && data.followerUrls) {
+                        data.followerUrls.forEach(follower => {
+                            const li = document.createElement('li');
+                            li.textContent = follower;
+                            followersList.appendChild(li);
+                        });
+                    } else if (data && data.followerUrls && data.followerUrls.length === 0) {
+                        const li = document.createElement('li');
+                        li.textContent = "No followers found.";
+                        followersList.appendChild(li);
+                    }
+                })
+                .catch(err => {
+                    console.error("Failed to load followers:", err);
+                    const li = document.createElement('li');
+                    li.textContent = "Error loading followers.";
+                    followersList.appendChild(li);
+                });
+
+            // Enable button when song selected
+            songsList.addEventListener('change', () => {
+                if (songsList.selectedIndex !== -1) {
+                    pushBtn.disabled = false;
+                }
+            });
+
+            // Push Track Action
+            pushBtn.addEventListener('click', () => {
+                const selectedSong = songsList.value;
+                if (!selectedSong) return;
+
+                fetch('/tracks', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ trackId: selectedSong })
+                })
+                    .then(response => {
+                        if (response.ok) {
+                            notifMsg.textContent = 'Track successfully pushed to queue!';
+                            notification.querySelector('.window-header span').textContent = 'Success';
+                        } else {
+                            notifMsg.textContent = 'Failed to push track (' + response.status + ').';
+                            notification.querySelector('.window-header span').textContent = 'Error';
+                        }
+                        notification.style.display = 'block';
+                    })
+                    .catch(err => {
+                        notifMsg.textContent = 'Network error: Could not complete request.';
+                        notification.querySelector('.window-header span').textContent = 'Error';
+                        notification.style.display = 'block';
+                    });
+            });
+        });
+    </script>
+
+</body>
+
 </html>
