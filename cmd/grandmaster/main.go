@@ -7,7 +7,6 @@ import (
 	"syscall"
 	"time"
 
-	"ensync/internal/common/netutil"
 	"ensync/internal/grandmaster/audiostreamer"
 	"ensync/internal/grandmaster/clocksync"
 	"ensync/internal/grandmaster/discovery"
@@ -26,29 +25,20 @@ func log(message string) {
 	logging.Log(logPrefix, message)
 }
 
-func initializeFixtures() (*follower.Followers, *audiostreamer.AudioStreamer) {
-	log("Initialize registry of Subscribers")
-	followers := follower.NewFollowers()
-
-	log("Initialize AudioStreamer")
-	interval := 20 * time.Millisecond
-	lookAhead := (2000 * time.Millisecond).Nanoseconds()
-	audioProvider := &sourceprovider.AudioProvider{}
-	audioStreamer := audiostreamer.NewAudioStreamer(followers, interval, lookAhead, audioProvider)
-
-	return followers, audioStreamer
+func provideSourceProvider() sourceprovider.SourceProvider {
+	return sourceprovider.NewAudioProvider()
 }
 
-func openLobby(followers *follower.Followers, stop chan struct{}) {
-	outboundIP := netutil.GetOutboundIP().String()
-	log("Start Discovery Lobby with IP:\n" + outboundIP)
-	lobby := discovery.NewDiscoveryLobby(followers, stop)
-	go lobby.OpenLobby(ntpPort)
+func provideFollowers() *follower.Followers {
+	return follower.NewFollowers()
+}
 
-	fmt.Println("Transfer visitors to followers? [y]es")
-	var input string
-	fmt.Scan(&input)
-	lobby.TransferVisitorsToFollowers(ntpPort)
+func provideStreamer(followers *follower.Followers, sourceProvider sourceprovider.SourceProvider) *audiostreamer.AudioStreamer {
+	log("Initialize AudioStreamer")
+	streamingInterval := 20 * time.Millisecond
+	lookAhead := (2000 * time.Millisecond).Nanoseconds()
+	sleepInterval := 100 * time.Millisecond
+	return audiostreamer.NewAudioStreamer(followers, streamingInterval, lookAhead, sourceProvider, sleepInterval)
 }
 
 func startDiscoveryService(followers *follower.Followers) {
@@ -58,18 +48,19 @@ func startDiscoveryService(followers *follower.Followers) {
 }
 
 func main() {
-	followers, audioStreamer := initializeFixtures()
 	stop := make(chan struct{})
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
-	interval := 100 * time.Millisecond
+	followers := provideFollowers()
+	sourceProvider := provideSourceProvider()
+	audioStreamer := provideStreamer(followers, sourceProvider)
 
 	log("Start NTP service")
 	go clocksync.ExposeNTP(ntpPort, stop)
 
-	log("Start AudioStreamLoop with sending interval " + interval.String())
-	go audioStreamer.StreamAudioToAllLoop(interval, stop)
+	log("Start AudioStreamLoop with sending interval")
+	go audioStreamer.StreamAudioToAllLoop(stop)
 
 	startDiscoveryService(followers)
 

@@ -22,6 +22,10 @@ type SourceProvider interface {
 
 type AudioProvider struct{}
 
+func NewAudioProvider() *AudioProvider {
+	return &AudioProvider{}
+}
+
 func (provider *AudioProvider) GetSource(filePath string) *Decoder {
 	audioSource, err := os.Open(filePath)
 	if err != nil {

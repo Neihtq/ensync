@@ -27,12 +27,13 @@ type AudioStreamer struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 
-	Followers      *follower.Followers
-	TrackQueue     deque.Deque[string]
-	Interval       time.Duration
-	SourceProvider sourceprovider.SourceProvider
-	MediaClock     clock.MediaClock
-	LookAhead      int64
+	Followers         *follower.Followers
+	TrackQueue        deque.Deque[string]
+	StreamingInterval time.Duration
+	SourceProvider    sourceprovider.SourceProvider
+	MediaClock        clock.MediaClock
+	LookAhead         int64
+	SleepInterval     time.Duration
 }
 
 func NewAudioStreamer(
@@ -40,16 +41,18 @@ func NewAudioStreamer(
 	interval time.Duration,
 	lookAhead int64,
 	sourceProvider sourceprovider.SourceProvider,
+	sleepInterval time.Duration,
 ) *AudioStreamer {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &AudioStreamer{
-		ctx:            ctx,
-		cancel:         cancel,
-		Followers:      followers,
-		Interval:       interval,
-		LookAhead:      lookAhead,
-		SourceProvider: sourceProvider,
-		MediaClock:     *clock.NewMediaClock(),
+		ctx:               ctx,
+		cancel:            cancel,
+		Followers:         followers,
+		StreamingInterval: interval,
+		LookAhead:         lookAhead,
+		SourceProvider:    sourceProvider,
+		MediaClock:        *clock.NewMediaClock(),
+		SleepInterval:     sleepInterval,
 	}
 }
 
@@ -66,7 +69,7 @@ func (streamer *AudioStreamer) StreamAudioToAll() {
 	logging.Log(logPrefix, "Stream "+filePath)
 
 	audioSource := streamer.SourceProvider.GetSource(filePath)
-	ticker := time.NewTicker(streamer.Interval)
+	ticker := time.NewTicker(streamer.StreamingInterval)
 	defer ticker.Stop()
 
 	buffer := make([]byte, 3528)
@@ -119,7 +122,7 @@ func streamAudioToFollower(buffer []byte, follower *follower.Follower) {
 	conn.Write(buffer)
 }
 
-func (streamer *AudioStreamer) StreamAudioToAllLoop(sleepDuration time.Duration, stop chan struct{}) {
+func (streamer *AudioStreamer) StreamAudioToAllLoop(stop chan struct{}) {
 	for {
 		select {
 		case <-stop:
@@ -129,7 +132,7 @@ func (streamer *AudioStreamer) StreamAudioToAllLoop(sleepDuration time.Duration,
 			streamer.mu.Lock()
 			if streamer.TrackQueue.Len() == 0 {
 				streamer.mu.Unlock()
-				time.Sleep(sleepDuration)
+				time.Sleep(streamer.SleepInterval)
 				continue
 			}
 			streamer.MediaClock = *clock.NewMediaClock()

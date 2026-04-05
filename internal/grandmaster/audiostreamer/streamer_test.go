@@ -50,7 +50,7 @@ func TestStreamAudioToAll(t *testing.T) {
 	followers.Followers[serverAddr] = &follow
 
 	// act
-	audioStreamer := NewAudioStreamer(followers, duration, lookAhead, &mockSourceProvider)
+	audioStreamer := NewAudioStreamer(followers, duration, lookAhead, &mockSourceProvider, duration)
 	audioStreamer.AddToQueue(filePath)
 	audioStreamer.StreamAudioToAll()
 
@@ -71,7 +71,7 @@ func TestStreamAudioToAllLoop(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	audioStreamer := NewAudioStreamer(followers, duration, lookAhead, &mockSourceProvider)
+	audioStreamer := NewAudioStreamer(followers, duration, lookAhead, &mockSourceProvider, duration)
 	audioStreamer.ctx = ctx
 	audioStreamer.cancel = cancel
 
@@ -80,7 +80,7 @@ func TestStreamAudioToAllLoop(t *testing.T) {
 	stop := make(chan struct{})
 
 	// act
-	go audioStreamer.StreamAudioToAllLoop(duration, stop)
+	go audioStreamer.StreamAudioToAllLoop(stop)
 
 	time.Sleep(100 * time.Millisecond)
 	close(stop)
