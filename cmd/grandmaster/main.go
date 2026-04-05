@@ -62,8 +62,9 @@ func provideDiscoveryService(registry *follower.FollowersRegistry) *discovery.Di
 func provideWebserver(
 	sourceProvider sourceprovider.SourceProvider,
 	followersRegistry *follower.FollowersRegistry,
+	trackQueue *queue.TrackQueue,
 ) *webservice.WebServer {
-	return webservice.NewWebServer(webPort, sourceProvider, followersRegistry)
+	return webservice.NewWebServer(webPort, sourceProvider, followersRegistry, trackQueue)
 }
 
 func main() {
@@ -88,7 +89,7 @@ func main() {
 	discoveryService.StartDiscovery()
 
 	log("Start Web Server")
-	webServer := provideWebserver(sourceProvider, followersRegistry)
+	webServer := provideWebserver(sourceProvider, followersRegistry, trackQueue)
 	go webServer.StartServer()
 
 	var input string
