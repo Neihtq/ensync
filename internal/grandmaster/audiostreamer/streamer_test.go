@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"ensync/internal/grandmaster/follower"
+	"ensync/internal/grandmaster/sourceprovider"
 )
 
 const (
@@ -43,7 +44,7 @@ func TestStreamAudioToAll(t *testing.T) {
 	// arrange
 	serverAddr := prepareTestFixtures(t)
 	filePath := "../../../assets/test_file.mp3"
-	mockSourceProvider := MockSourceProvider{}
+	mockSourceProvider := sourceprovider.MockSourceProvider{}
 	follow := follower.Follower{AudioURL: serverAddr}
 	followers := follower.NewFollowers()
 	followers.Followers[serverAddr] = &follow
@@ -63,7 +64,7 @@ func TestStreamAudioToAll(t *testing.T) {
 func TestStreamAudioToAllLoop(t *testing.T) {
 	// arrange
 	serverAddr := prepareTestFixtures(t)
-	mockSourceProvider := MockSourceProvider{}
+	mockSourceProvider := sourceprovider.MockSourceProvider{}
 	follow := follower.Follower{AudioURL: serverAddr}
 	followers := follower.NewFollowers()
 	followers.Followers[serverAddr] = &follow

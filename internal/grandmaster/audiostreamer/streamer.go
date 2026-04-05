@@ -12,6 +12,7 @@ import (
 	"ensync/internal/grandmaster/clock"
 	"ensync/internal/grandmaster/follower"
 	"ensync/internal/grandmaster/logging"
+	"ensync/internal/grandmaster/sourceprovider"
 
 	"github.com/gammazero/deque"
 )
@@ -29,7 +30,7 @@ type AudioStreamer struct {
 	Followers      *follower.Followers
 	TrackQueue     deque.Deque[string]
 	Interval       time.Duration
-	SourceProvider SourceProvider
+	SourceProvider sourceprovider.SourceProvider
 	MediaClock     clock.MediaClock
 	LookAhead      int64
 }
@@ -38,7 +39,7 @@ func NewAudioStreamer(
 	followers *follower.Followers,
 	interval time.Duration,
 	lookAhead int64,
-	sourceProvider SourceProvider,
+	sourceProvider sourceprovider.SourceProvider,
 ) *AudioStreamer {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &AudioStreamer{

@@ -1,4 +1,5 @@
-package audiostreamer
+// Package sourceprovider provides functions and interfaces to fetch audio sources
+package sourceprovider
 
 import (
 	"io"

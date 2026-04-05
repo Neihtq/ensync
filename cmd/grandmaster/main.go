@@ -13,6 +13,7 @@ import (
 	"ensync/internal/grandmaster/discovery"
 	"ensync/internal/grandmaster/follower"
 	"ensync/internal/grandmaster/logging"
+	"ensync/internal/grandmaster/sourceprovider"
 )
 
 const (
@@ -32,7 +33,7 @@ func initializeFixtures() (*follower.Followers, *audiostreamer.AudioStreamer) {
 	log("Initialize AudioStreamer")
 	interval := 20 * time.Millisecond
 	lookAhead := (2000 * time.Millisecond).Nanoseconds()
-	audioProvider := &audiostreamer.AudioProvider{}
+	audioProvider := &sourceprovider.AudioProvider{}
 	audioStreamer := audiostreamer.NewAudioStreamer(followers, interval, lookAhead, audioProvider)
 
 	return followers, audioStreamer
