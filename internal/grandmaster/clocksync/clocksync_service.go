@@ -11,8 +11,16 @@ import (
 
 const timeStampSize = 8
 
-func ExposeNTP(port string, stop chan struct{}) error {
-	addr, err := net.ResolveUDPAddr("udp", port)
+type ClockSyncService struct {
+	Port string
+}
+
+func NewClockSyncService(port string) *ClockSyncService {
+	return &ClockSyncService{Port: port}
+}
+
+func (service *ClockSyncService) ExposeNTP(stop chan struct{}) error {
+	addr, err := net.ResolveUDPAddr("udp", service.Port)
 	if err != nil {
 		log.Fatal(err)
 		return err

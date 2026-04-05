@@ -13,8 +13,9 @@ func TestExposeNTP(t *testing.T) {
 	serverAddrStr := "127.0.0.1:10123"
 
 	// ct
+	clockSyncService := NewClockSyncService(serverAddrStr)
 	go func() {
-		if err := ExposeNTP(serverAddrStr, stop); err != nil {
+		if err := clockSyncService.ExposeNTP(stop); err != nil {
 			t.Errorf("ExposeNTP failed: Server exited with error: %v", err)
 		}
 	}()

@@ -41,6 +41,10 @@ func provideStreamer(followers *follower.Followers, sourceProvider sourceprovide
 	return audiostreamer.NewAudioStreamer(followers, streamingInterval, lookAhead, sourceProvider, sleepInterval)
 }
 
+func provideClockSyncService() *clocksync.ClockSyncService {
+	return clocksync.NewClockSyncService(ntpPort)
+}
+
 func startDiscoveryService(followers *follower.Followers) {
 	log("Start Discovery Service")
 	discoveryService := discovery.NewDiscoveryService(followers, ntpPort)
@@ -54,12 +58,13 @@ func main() {
 
 	followers := provideFollowers()
 	sourceProvider := provideSourceProvider()
-	audioStreamer := provideStreamer(followers, sourceProvider)
 
 	log("Start NTP service")
-	go clocksync.ExposeNTP(ntpPort, stop)
+	clockSyncService := provideClockSyncService()
+	go clockSyncService.ExposeNTP(stop)
 
 	log("Start AudioStreamLoop with sending interval")
+	audioStreamer := provideStreamer(followers, sourceProvider)
 	go audioStreamer.StreamAudioToAllLoop(stop)
 
 	startDiscoveryService(followers)
