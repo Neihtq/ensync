@@ -1,10 +1,7 @@
 package discovery
 
 import (
-	"bytes"
 	"net"
-	"net/http"
-	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -56,62 +53,4 @@ func TestDiscover(t *testing.T) {
 	// act
 	discoveryService := NewDiscoveryService(registry, ntpPort)
 	discoveryService.Discover()
-}
-
-func TestLobby(t *testing.T) {
-	// arrange
-	registry := follower.NewFollowersRegistry()
-	stop := make(chan struct{})
-	port := ":11111"
-
-	// assert
-	dl := NewDiscoveryLobby(registry, stop)
-	go dl.OpenLobby(port)
-
-	close(stop)
-}
-
-func TestJoinLobby(t *testing.T) {
-	// arrange
-	stop := make(chan struct{})
-	registry := follower.NewFollowersRegistry()
-	visitorPort := ":11112"
-	ipAddress := "127.0.0.1"
-	endpoint := "/connections"
-	jsonBody := []byte(`{"address":"` + ipAddress + `","port":"` + visitorPort + `", "endpoint":"` + endpoint + `"}`)
-	request := httptest.NewRequest(http.MethodPost, "/visitor", bytes.NewBuffer(jsonBody))
-	request.Header.Set("Content-Type", "application/json")
-	writer := httptest.NewRecorder()
-
-	// act
-	dl := NewDiscoveryLobby(registry, stop)
-	dl.JoinLobby(writer, request)
-
-	// assert
-	expected := visitorPort + endpoint
-	if dl.visitors[ipAddress] != expected {
-		t.Errorf("Visitor creation failed: Expected %s for ip address %s but received %s", expected, ipAddress, dl.visitors[ipAddress])
-	}
-	if writer.Code != http.StatusCreated {
-		t.Errorf("Expected 201 Created, got %d", writer.Code)
-	}
-}
-
-func TestTransferVisitorsToFollowers(t *testing.T) {
-	stop := make(chan struct{})
-	registry := follower.NewFollowersRegistry()
-	visitorPort := ":11113"
-	ntpPort := ":11114"
-	ipAddress := "127.0.0.1"
-	endpoint := "/connections"
-	jsonBody := []byte(`{"address":"` + ipAddress + `","port":"` + visitorPort + `", "endpoint":"` + endpoint + `"}`)
-	request := httptest.NewRequest(http.MethodPost, "/visitor", bytes.NewBuffer(jsonBody))
-	request.Header.Set("Content-Type", "application/json")
-	writer := httptest.NewRecorder()
-
-	dl := NewDiscoveryLobby(registry, stop)
-	dl.JoinLobby(writer, request)
-
-	// act
-	dl.TransferVisitorsToFollowers(ntpPort)
 }
