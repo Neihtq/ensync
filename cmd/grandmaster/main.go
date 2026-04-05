@@ -38,7 +38,6 @@ func initializeFixtures() (*follower.Followers, *audiostreamer.AudioStreamer) {
 	return followers, audioStreamer
 }
 
-
 func openLobby(followers *follower.Followers, stop chan struct{}) {
 	outboundIP := netutil.GetOutboundIP().String()
 	log("Start Discovery Lobby with IP:\n" + outboundIP)
@@ -71,7 +70,6 @@ func main() {
 	log("Start AudioStreamLoop with sending interval " + interval.String())
 	go audioStreamer.StreamAudioToAllLoop(interval, stop)
 
-	// openLobby(followers, stop)
 	startDiscoveryService(followers)
 
 	var input string

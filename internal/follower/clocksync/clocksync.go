@@ -64,8 +64,8 @@ func (clockSync *ClockSync) ReceiveNTPPackets(stop chan struct{}) {
 			numBytes, _, err := clockSync.Conn.ReadFromUDP(buffer)
 			receivedTime := time.Now().UnixNano()
 			if err != nil {
-				fmt.Println("Error reading:", err)
-				continue
+				fmt.Println("Host not reachable. Closing connection.", err)
+				return
 			}
 			timeStamps := []int64{}
 			for start := 0; start+timeStampSize <= numBytes; start += timeStampSize {
@@ -91,7 +91,8 @@ func (clockSync *ClockSync) RunClockSync(stop chan struct{}) {
 		case <-ticker.C:
 			err := clockSync.SendNTPRequest()
 			if err != nil {
-				fmt.Println("ClockSyn service unavailable")
+				fmt.Println("ClockSync service unavailable")
+				return
 			}
 		}
 	}

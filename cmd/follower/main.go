@@ -75,7 +75,6 @@ func main() {
 	cp := controlplane.NewControlPlaneService(mirrorClock, audioPort, stop)
 	go cp.StartService(cpPort)
 
-	// connectLobby()
 	visibilityService := startVisibilityService()
 	defer visibilityService.Shutdown()
 
