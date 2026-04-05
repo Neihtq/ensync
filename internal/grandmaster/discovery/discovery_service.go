@@ -28,7 +28,7 @@ func NewDiscoveryService(registry *follower.FollowersRegistry, ntpPort string) *
 	}
 }
 
-func (ds *DiscoveryService) Discover() {
+func (ds *DiscoveryService) StartDiscovery() {
 	log.SetOutput(io.Discard)
 
 	entriesCh := make(chan *mdns.ServiceEntry, 16)

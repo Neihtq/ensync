@@ -30,7 +30,7 @@ func provideSourceProvider() sourceprovider.SourceProvider {
 	return sourceprovider.NewAudioProvider()
 }
 
-func provideFollowers() *follower.FollowersRegistry {
+func provideFollowersRegistry() *follower.FollowersRegistry {
 	return follower.NewFollowersRegistry()
 }
 
@@ -53,10 +53,8 @@ func provideClockSyncService() *clocksync.ClockSyncService {
 	return clocksync.NewClockSyncService(ntpPort)
 }
 
-func startDiscoveryService(followers *follower.FollowersRegistry) {
-	log("Start Discovery Service")
-	discoveryService := discovery.NewDiscoveryService(followers, ntpPort)
-	discoveryService.Discover()
+func provideDiscoveryService(registry *follower.FollowersRegistry) *discovery.DiscoveryService {
+	return discovery.NewDiscoveryService(registry, ntpPort)
 }
 
 func main() {
@@ -64,7 +62,7 @@ func main() {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
-	followers := provideFollowers()
+	followersRegistry := provideFollowersRegistry()
 
 	log("Start NTP service")
 	clockSyncService := provideClockSyncService()
@@ -73,10 +71,12 @@ func main() {
 	log("Start AudioStreamLoop")
 	sourceProvider := provideSourceProvider()
 	trackQueue := provideTrackQueue()
-	audioStreamer := provideStreamer(followers, sourceProvider, trackQueue)
+	audioStreamer := provideStreamer(followersRegistry, sourceProvider, trackQueue)
 	go audioStreamer.StreamAudioToAllLoop(stop)
 
-	startDiscoveryService(followers)
+	log("Start Discovery Service")
+	discoveryService := provideDiscoveryService(followersRegistry)
+	discoveryService.StartDiscovery()
 
 	var input string
 	fmt.Println("Continue? [y]es")

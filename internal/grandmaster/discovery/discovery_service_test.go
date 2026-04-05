@@ -52,5 +52,5 @@ func TestDiscover(t *testing.T) {
 
 	// act
 	discoveryService := NewDiscoveryService(registry, ntpPort)
-	discoveryService.Discover()
+	discoveryService.StartDiscovery()
 }
