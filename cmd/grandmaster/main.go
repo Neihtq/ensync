@@ -32,6 +32,10 @@ func provideSourceProvider() sourceprovider.SourceProvider {
 	return sourceprovider.NewAudioProvider(root)
 }
 
+func provideNavidromeProvider() *sourceprovider.NaviDromeProvider {
+	return sourceprovider.NewNaviDromeProvider()
+}
+
 func provideFollowersRegistry() *follower.FollowersRegistry {
 	return follower.NewFollowersRegistry()
 }
@@ -77,6 +81,9 @@ func main() {
 	log("Start NTP service")
 	clockSyncService := provideClockSyncService()
 	go clockSyncService.ExposeNTP(stop)
+
+	provider := provideNavidromeProvider()
+	log("Initialized Source Provider: Navidrome connector " + provider.NaviDromeClient.ApiVersion)
 
 	log("Start AudioStreamLoop")
 	sourceProvider := provideSourceProvider()
