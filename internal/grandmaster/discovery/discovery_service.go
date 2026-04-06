@@ -39,11 +39,14 @@ func (ds *DiscoveryService) StartDiscovery() {
 func (ds *DiscoveryService) ScanForServers(entriesCh chan *mdns.ServiceEntry) {
 	params := mdns.DefaultParams(mdnsName)
 	params.Entries = entriesCh
-	params.DisableIPv6 = true
-	params.Timeout = 2 * time.Second
+	params.DisableIPv6 = false
+	params.Timeout = 5 * time.Second
 	for {
-		mdns.Query(params)
-		params.Timeout = 2 * time.Second
+		err := mdns.Query(params)
+		if err != nil {
+			fmt.Println("[Discovery] Query error:", err)
+		}
+		time.Sleep(10 * time.Second)
 	}
 }
 
