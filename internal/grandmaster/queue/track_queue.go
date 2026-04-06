@@ -41,3 +41,17 @@ func (tq *TrackQueue) Last() string {
 
 	return tq.queue.Back()
 }
+
+func (tq *TrackQueue) GetAllItems() []string {
+	queueLength := tq.Len()
+
+	tq.mu.Lock()
+	defer tq.mu.Unlock()
+
+	playList := make([]string, queueLength)
+	for i := range queueLength {
+		playList[i] = tq.queue.At(i)
+	}
+
+	return playList
+}

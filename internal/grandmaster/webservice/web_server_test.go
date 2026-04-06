@@ -40,7 +40,7 @@ func TestListSongs(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/songs", nil)
 	rr := httptest.NewRecorder()
 
-	server.listSongs(rr, req)
+	server.ListSongs(rr, req)
 
 	if status := rr.Code; status != http.StatusOK {
 		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusOK)
@@ -80,7 +80,7 @@ func TestListFollowers(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/followers", nil)
 	rr := httptest.NewRecorder()
 
-	server.listFollowers(rr, req)
+	server.ListFollowers(rr, req)
 
 	if status := rr.Code; status != http.StatusOK {
 		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusOK)
@@ -186,4 +186,44 @@ func TestStartServer(t *testing.T) {
 
 	// Wait briefly to ensure it spins up without crashing
 	time.Sleep(100 * time.Millisecond)
+}
+
+func TestGetQueue(t *testing.T) {
+	provider := &sourceprovider.MockSourceProvider{}
+	registry := follower.NewFollowersRegistry()
+	trackQueue := queue.NewTrackQueue()
+
+	trackQueue.PushBack("track1.mp3")
+	trackQueue.PushBack("track2.mp3")
+
+	server := NewWebServer(":9999", provider, registry, trackQueue)
+
+	req := httptest.NewRequest(http.MethodGet, "/queue", nil)
+	rr := httptest.NewRecorder()
+
+	server.GetQueue(rr, req)
+
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusOK)
+	}
+
+	contentType := rr.Header().Get("Content-Type")
+	if contentType != "application/json" {
+		t.Errorf("Expected Content-Type application/json, got %s", contentType)
+	}
+
+	var response map[string][]string
+	err := json.NewDecoder(rr.Body).Decode(&response)
+	if err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	tracks, ok := response["tracks"]
+	if !ok {
+		t.Fatalf("Expected 'tracks' key in response")
+	}
+
+	if len(tracks) != 2 || tracks[0] != "track1.mp3" || tracks[1] != "track2.mp3" {
+		t.Errorf("Unexpected tracks list: %v", tracks)
+	}
 }
