@@ -88,6 +88,8 @@ func (client *NavidromeClient) Search(query string) (*SearchResult3, error) {
 func (client *NavidromeClient) GetStream(songID string) (io.ReadCloser, string, error) {
 	params := url.Values{}
 	params.Set("id", songID)
+	params.Set("format", "mp3")
+	params.Set("maxBitRae", "320")
 
 	URL := client.buildURL("stream", params)
 	resp, err := client.HttpClient.Get(URL)

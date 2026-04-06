@@ -73,6 +73,16 @@
 
         .left-column {
             flex: 3;
+            display: flex;
+            gap: 20px;
+        }
+
+        .songs-section {
+            flex: 1;
+        }
+
+        .search-section {
+            flex: 1;
         }
 
         .right-column {
@@ -126,6 +136,36 @@
             background-color: #E6EEF7;
             font-weight: bold;
             color: #17385E;
+        }
+
+        .search-input-group {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+
+        .gamefaqs-input {
+            flex: 1;
+            border: 1px solid #A2B1C2;
+            padding: 4px;
+            font-family: Verdana, sans-serif;
+            font-size: 11px;
+        }
+
+        .search-result-item {
+            font-size: 11px;
+            line-height: 1.2;
+        }
+
+        .search-result-meta {
+            color: #666;
+            font-size: 10px;
+            display: block;
+        }
+
+        .span-full {
+            grid-column: 1 / -1;
+            width: 100%;
         }
 
         .classic-btn {
@@ -241,16 +281,34 @@
         <!-- Main Content -->
         <div class="main-content">
 
-            <!-- Left Column: Songs -->
-            <div class="left-column">
-                <div class="box">
-                    <div class="box-header">Available Songs</div>
-                    <div class="box-content">
-                        <ul id="songs-list" class="gamefaqs-list"></ul>
-                        <div>
-                            <button id="push-btn" class="classic-btn" disabled>Add Selected Track To Queue</button>
+            <!-- Left Column: Songs & Search -->
+            <div class="left-column" style="flex-direction: column;">
+                <div style="display: flex; gap: 20px; width: 100%;">
+                    <div class="songs-section">
+                        <div class="box">
+                            <div class="box-header">Available Songs</div>
+                            <div class="box-content">
+                                <ul id="songs-list" class="gamefaqs-list"></ul>
+                            </div>
                         </div>
                     </div>
+
+                    <div class="search-section">
+                        <div class="box">
+                            <div class="box-header">Search Navidrome</div>
+                            <div class="box-content">
+                                <div class="search-input-group">
+                                    <input type="text" id="search-input" class="gamefaqs-input" placeholder="Artist, album, title...">
+                                    <button id="search-btn" class="classic-btn" style="margin-top:0">Search</button>
+                                </div>
+                                <ul id="search-results-list" class="gamefaqs-list"></ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="width: 100%;">
+                    <button id="push-btn" class="classic-btn" style="width:100%; margin-top:0" disabled>Add Selected Track To Queue</button>
                 </div>
             </div>
 
@@ -300,7 +358,23 @@
             const notifMsg = document.getElementById('notif-msg');
             const notifTitle = document.getElementById('notif-title');
 
-            // Load songs
+            const searchBtn = document.getElementById('search-btn');
+            const searchInput = document.getElementById('search-input');
+            const searchResultsList = document.getElementById('search-results-list');
+
+            let currentSelectedTrack = null;
+
+            function selectTrack(element, trackId, sourceList) {
+                // Deselect all in both lists
+                Array.from(songsList.children).forEach(child => child.classList.remove('selected'));
+                Array.from(searchResultsList.children).forEach(child => child.classList.remove('selected'));
+                
+                element.classList.add('selected');
+                currentSelectedTrack = trackId;
+                pushBtn.disabled = false;
+            }
+
+            // Load local songs
             fetch('/songs')
                 .then(res => res.json())
                 .then(data => {
@@ -308,18 +382,52 @@
                         data.songs.forEach(song => {
                             const li = document.createElement('li');
                             li.textContent = song;
-                            li.addEventListener('click', () => {
-                                // Deselect all
-                                Array.from(songsList.children).forEach(child => child.classList.remove('selected'));
-                                // Select this one
-                                li.classList.add('selected');
-                                pushBtn.disabled = false;
-                                songsList.dataset.selectedValue = song;
-                            });
+                            li.addEventListener('click', () => selectTrack(li, song));
                             songsList.appendChild(li);
                         });
                     }
                 })
+
+            // Search Logic
+            function performSearch() {
+                const query = searchInput.value.trim();
+                if (!query) return;
+
+                searchBtn.disabled = true;
+                searchResultsList.innerHTML = '<li>Searching...</li>';
+
+                fetch(`/songs?query=${encodeURIComponent(query)}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        searchResultsList.innerHTML = '';
+                        searchBtn.disabled = false;
+                        if (data && data.songs && data.songs.length > 0) {
+                            data.songs.forEach(song => {
+                                const li = document.createElement('li');
+                                li.innerHTML = `
+                                    <div class="search-result-item">
+                                        <strong>${song.title}</strong>
+                                        <span class="search-result-meta">${song.artist} - ${song.album}</span>
+                                    </div>
+                                `;
+                                li.addEventListener('click', () => selectTrack(li, song.id));
+                                searchResultsList.appendChild(li);
+                            });
+                        } else {
+                            searchResultsList.innerHTML = '<li>No results found.</li>';
+                        }
+                    })
+                    .catch(err => {
+                        console.error("Search failed:", err);
+                        searchResultsList.innerHTML = '<li>Search failed.</li>';
+                        searchBtn.disabled = false;
+                    });
+            }
+
+            searchBtn.addEventListener('click', performSearch);
+            searchInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') performSearch();
+            });
 
             // Load followers
             fetch('/followers')
@@ -359,15 +467,14 @@
 
             // Push Track Action
             pushBtn.addEventListener('click', () => {
-                const selectedSong = songsList.dataset.selectedValue;
-                if (!selectedSong) return;
+                if (!currentSelectedTrack) return;
 
                 fetch('/tracks', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ trackId: selectedSong })
+                    body: JSON.stringify({ trackId: currentSelectedTrack })
                 })
                     .then(response => {
                         if (response.ok) {

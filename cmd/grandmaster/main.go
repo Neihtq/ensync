@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -85,14 +84,10 @@ func main() {
 
 	provider := provideNavidromeProvider()
 	log("Initialized Source Provider: Navidrome connector " + provider.Client.ApiVersion)
-	results := provider.SearchSong("tv off")
-	first := results[0]
-	fmt.Println("search results:", first.Title, first.ID, first.Album, first.Artist)
 
 	log("Start AudioStreamLoop")
-	sourceProvider := provideSourceProvider()
 	trackQueue := provideTrackQueue()
-	audioStreamer := provideStreamer(followersRegistry, sourceProvider, trackQueue)
+	audioStreamer := provideStreamer(followersRegistry, provider, trackQueue)
 	go audioStreamer.StreamAudioToAllLoop(stop)
 
 	log("Start Discovery Service")
@@ -100,7 +95,7 @@ func main() {
 	discoveryService.StartDiscovery()
 
 	log("Start Web Server")
-	webServer := provideWebserver(sourceProvider, followersRegistry, trackQueue)
+	webServer := provideWebserver(provider, followersRegistry, trackQueue)
 	trackQueue.SetCallbackHook(webServer.BroadcastQueueState)
 	go webServer.StartServer()
 

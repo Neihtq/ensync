@@ -9,6 +9,7 @@ import (
 	"github.com/gopxl/beep/v2"
 	"github.com/gopxl/beep/v2/flac"
 	"github.com/gopxl/beep/v2/mp3"
+	"github.com/gopxl/beep/v2/vorbis"
 )
 
 type NaviDromeProvider struct {
@@ -34,8 +35,10 @@ func (provider *NaviDromeProvider) GetSource(trackIdentifier string) (*Decoder, 
 	var streamer beep.StreamSeekCloser
 	var format beep.Format
 	switch contentType {
-	case "audio/flac", "applicatoin/x-flac":
+	case "audio/flac", "application/x-flac":
 		streamer, format, err = flac.Decode(stream)
+	case "audio/mp4", "audio/acc":
+		streamer, format, err = vorbis.Decode(stream)
 	default:
 		streamer, format, err = mp3.Decode(stream)
 	}
