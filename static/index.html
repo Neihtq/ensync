@@ -249,6 +249,13 @@
                 </div>
 
                 <div class="box">
+                    <div class="box-header">Now Playing</div>
+                    <div class="box-content" style="text-align: center; font-weight: bold; padding: 20px 10px; color: #17385E; background-color: #E6EEF7; font-size: 13px;">
+                        <span id="now-playing-label">Idle (Waiting for Track)</span>
+                    </div>
+                </div>
+
+                <div class="box">
                     <div class="box-header">Current Queue</div>
                     <div class="box-content" style="padding: 0; max-height: 200px; overflow-y: auto;">
                         <ul id="queue-list" class="sidebar-list"></ul>
@@ -394,6 +401,24 @@
                         notification.style.display = 'block';
                     });
             });
+
+            // SSE Listener for Now Playing Endpoint
+            const nowPlayingLabel = document.getElementById('now-playing-label');
+            const evtSource = new EventSource('/now-playing');
+            
+            evtSource.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                nowPlayingLabel.textContent = data.nowPlaying || 'Idle';
+                
+                // Track advanced, refresh the queue UI automatically!
+                loadQueue();
+            };
+            
+            evtSource.onerror = function(err) {
+                console.error("EventSource connection lost", err);
+                nowPlayingLabel.textContent = 'Disconnected...';
+            };
+
         });
     </script>
 
