@@ -2,6 +2,7 @@
 package sourceprovider
 
 import (
+	"fmt"
 	"io"
 	"io/fs"
 	"os"
@@ -19,7 +20,7 @@ type Decoder struct {
 }
 
 type SourceProvider interface {
-	GetSource(trackIdentifier string) *Decoder
+	GetSource(trackIdentifier string) (*Decoder, error)
 	ListSongs() []string
 }
 
@@ -36,16 +37,18 @@ func NewAudioProvider(root string) *AudioProvider {
 	}
 }
 
-func (provider *AudioProvider) GetSource(trackIdentifier string) *Decoder {
+func (provider *AudioProvider) GetSource(trackIdentifier string) (*Decoder, error) {
 	path := filepath.Join(provider.root, trackIdentifier)
+	fmt.Println("Opening audio file", path)
 	audioSource, err := os.Open(path)
 	if err != nil {
-		panic("Error opening audio source at " + path)
+		return nil, fmt.Errorf("error opening audio source at %s: %w", path, err)
 	}
 
 	decoder, err := mp3.NewDecoder(audioSource)
 	if err != nil {
-		panic("Error creating mp3 decoder " + err.Error())
+		audioSource.Close()
+		return nil, fmt.Errorf("error creating mp3 decoder: %w", err)
 	}
 
 	return &Decoder{
@@ -53,7 +56,7 @@ func (provider *AudioProvider) GetSource(trackIdentifier string) *Decoder {
 		Closer:     audioSource,
 		SampleRate: int64(decoder.SampleRate()),
 		Channels:   2,
-	}
+	}, nil
 }
 
 func (provider *AudioProvider) ListSongs() []string {
@@ -67,12 +70,12 @@ func (provider *MockSourceProvider) ListSongs() []string {
 	return []string{"mock1", "mock2"}
 }
 
-func (provider *MockSourceProvider) GetSource(filePath string) *Decoder {
+func (provider *MockSourceProvider) GetSource(filePath string) (*Decoder, error) {
 	reader := strings.NewReader(filePath)
 	return &Decoder{
 		Reader:     reader,
 		Closer:     io.NopCloser(reader),
 		SampleRate: 48000,
 		Channels:   2,
-	}
+	}, nil
 }

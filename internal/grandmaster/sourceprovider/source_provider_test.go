@@ -17,12 +17,10 @@ func TestAudioProvider_New(t *testing.T) {
 
 func TestAudioProvider_GetSource_FileNotFound(t *testing.T) {
 	provider := NewAudioProvider(testDir)
-	defer func() {
-		if r := recover(); r == nil {
-			t.Errorf("Expected panic when file is not found")
-		}
-	}()
-	provider.GetSource("non_existent_file.mp3")
+	_, err := provider.GetSource("non_existent_file.mp3")
+	if err == nil {
+		t.Errorf("Expected error when file is not found")
+	}
 }
 
 func TestAudioProvider_GetSource_InvalidMp3(t *testing.T) {
@@ -40,19 +38,21 @@ func TestAudioProvider_GetSource_InvalidMp3(t *testing.T) {
 	tmpFile.Close()
 
 	provider := NewAudioProvider(testDir)
-	defer func() {
-		if r := recover(); r == nil {
-			t.Errorf("Expected panic when file is invalid mp3")
-		}
-	}()
-	provider.GetSource(tmpFile.Name())
+	_, err = provider.GetSource(tmpFile.Name())
+	if err == nil {
+		t.Errorf("Expected error when file is invalid mp3")
+	}
 }
 
 func TestMockSourceProvider_GetSource(t *testing.T) {
 	provider := &MockSourceProvider{}
 
 	filePath := "test_content"
-	decoder := provider.GetSource(filePath)
+	decoder, err := provider.GetSource(filePath)
+
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
 
 	if decoder == nil {
 		t.Fatalf("Expected non-nil decoder")
