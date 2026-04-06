@@ -66,6 +66,8 @@ func TestNavidromeClient_Ping_Failure(t *testing.T) {
 	os.Setenv("NAVIDROME_USER", "baduser")
 	os.Setenv("NAVIDROME_PASSWORD", "badpass")
 	defer os.Unsetenv("NAVIDROME_URL")
+	defer os.Unsetenv("NAVIDROME_USER")
+	defer os.Unsetenv("NAVIDROME_PASSWORD")
 	
 	client := NewNavidromeClient()
 	err := client.Ping()
@@ -81,11 +83,57 @@ func TestNavidromeClient_Ping_Failure(t *testing.T) {
 }
 
 func TestNavidromeClient_HTTPError(t *testing.T) {
+	os.Setenv("NAVIDROME_URL", "http://non-existent-url-12345.com")
+	os.Setenv("NAVIDROME_USER", "testuser")
+	os.Setenv("NAVIDROME_PASSWORD", "testpass")
+	defer os.Unsetenv("NAVIDROME_URL")
+	defer os.Unsetenv("NAVIDROME_USER")
+	defer os.Unsetenv("NAVIDROME_PASSWORD")
+	
 	client := NewNavidromeClient()
-	client.BaseURL = "http://non-existent-url-12345.com"
 	
 	err := client.Ping()
 	if err == nil {
 		t.Fatal("expected HTTP error but got nil")
+	}
+}
+
+func TestNavidromeClient_Search(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		query := r.URL.Query()
+		if query.Get("query") != "oasis" {
+			t.Errorf("expected query 'oasis', got %s", query.Get("query"))
+		}
+
+		resp := ResponseWrapper{
+			SubsonicResponse: SubsonicResponse{
+				Status: "ok",
+				SearchResult3: &SearchResult3{
+					Song: []Song{
+						{ID: "1", Title: "Wonderwall", Artist: "Oasis"},
+					},
+				},
+			},
+		}
+		json.NewEncoder(w).Encode(resp)
+	}))
+	defer server.Close()
+
+	os.Setenv("NAVIDROME_URL", server.URL)
+	os.Setenv("NAVIDROME_USER", "test")
+	os.Setenv("NAVIDROME_PASSWORD", "test")
+	defer os.Unsetenv("NAVIDROME_URL")
+
+	client := NewNavidromeClient()
+	result, err := client.Search("oasis")
+	if err != nil {
+		t.Fatalf("Search failed: %v", err)
+	}
+
+	if len(result.Song) != 1 {
+		t.Errorf("expected 1 song, got %d", len(result.Song))
+	}
+	if result.Song[0].Title != "Wonderwall" {
+		t.Errorf("expected Wonderwall, got %s", result.Song[0].Title)
 	}
 }

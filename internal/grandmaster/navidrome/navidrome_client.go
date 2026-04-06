@@ -6,27 +6,10 @@ import (
 	"crypto/md5"
 	"crypto/rand"
 	"encoding/hex"
-	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/url"
 	"os"
 )
-
-type ResponseWrapper struct {
-	SubsonicResponse SubsonicResponse `json:"subsonic-response"`
-}
-
-type SubsonicResponse struct {
-	Status  string    `json:"status"`
-	Version string    `json:"version"`
-	Error   *APIError `json:"error,omitempty"`
-}
-
-type APIError struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
-}
 
 type NavidromeClient struct {
 	BaseURL    string
@@ -38,6 +21,9 @@ type NavidromeClient struct {
 
 func NewNavidromeClient() *NavidromeClient {
 	serverURL := os.Getenv("NAVIDROME_URL")
+	if serverURL == "" {
+		panic("Server URL not set!")
+	}
 	return &NavidromeClient{
 		BaseURL:    serverURL,
 		ApiVersion: "1.16.1",
@@ -74,55 +60,25 @@ func (client *NavidromeClient) buildauthParms() url.Values {
 }
 
 func (client *NavidromeClient) Ping() error {
-	var result ResponseWrapper
-	err := client.callGet("ping", nil, &result)
+	_, err := client.callGet("ping", nil)
 	if err != nil {
 		return err
 	}
 
-	if result.SubsonicResponse.Status == "failed" {
-		if result.SubsonicResponse.Error != nil {
-			return fmt.Errorf("API error %d: %s", result.SubsonicResponse.Error.Code, result.SubsonicResponse.Error.Message)
-		}
-		return fmt.Errorf("API failed with an unknown error")
-	}
-
 	return nil
 }
 
-func (client *NavidromeClient) buildURL(endpoint string, extraParams url.Values) string {
-	base, _ := url.Parse(fmt.Sprintf("%s/rest/%s", client.BaseURL, endpoint))
+func (client *NavidromeClient) Search(query string) (*SearchResult3, error) {
+	resultLimit := "20"
+	params := url.Values{}
+	params.Set("query", query)
+	params.Set("artistCount", resultLimit)
+	params.Set("albumCount", resultLimit)
+	params.Set("songCount", resultLimit)
 
-	params := client.buildauthParms()
-	for key, values := range extraParams {
-		for _, val := range values {
-			params.Add(key, val)
-		}
-	}
-
-	base.RawQuery = params.Encode()
-	return base.String()
-}
-
-func (client *NavidromeClient) callGet(endpoint string, params url.Values, target interface{}) error {
-	URL := client.buildURL(endpoint, params)
-
-	resp, err := client.HttpClient.Get(URL)
+	result, err := client.callGet("search3", params)
 	if err != nil {
-		return fmt.Errorf("HTTP request failed: %w", err)
+		return nil, err
 	}
-	defer resp.Body.Close()
-
-	if err := json.NewDecoder(resp.Body).Decode(target); err != nil {
-		return fmt.Errorf("failed to decode JSON response: %w", err)
-	}
-
-	return nil
-}
-
-func getCredentials() (string, string) {
-	user := os.Getenv("NAVIDROME_USER")
-	password := os.Getenv("NAVIDROME_PASSWORD")
-
-	return user, password
+	return result.SubsonicResponse.SearchResult3, nil
 }

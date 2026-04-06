@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -84,6 +85,9 @@ func main() {
 
 	provider := provideNavidromeProvider()
 	log("Initialized Source Provider: Navidrome connector " + provider.NaviDromeClient.ApiVersion)
+	results := provider.SearchSong("tv off")
+	first := results[0]
+	fmt.Println("search results:", first.Title, first.ID, first.Album, first.Artist)
 
 	log("Start AudioStreamLoop")
 	sourceProvider := provideSourceProvider()

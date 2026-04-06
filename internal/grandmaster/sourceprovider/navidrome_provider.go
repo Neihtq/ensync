@@ -29,6 +29,20 @@ func (provider *NaviDromeProvider) ListSongs() []string {
 	return []string{}
 }
 
+func (provider *NaviDromeProvider) SearchSong(query string) []navidrome.Song {
+	searchResult, err := provider.NaviDromeClient.Search(query)
+	if err != nil {
+		fmt.Println("Error calling /search3", err)
+		return []navidrome.Song{}
+	}
+
+	if searchResult == nil {
+		return []navidrome.Song{}
+	}
+
+	return searchResult.Song
+}
+
 func (provider *NaviDromeProvider) checkHealth() {
 	errCount := 0
 	maxAttempts := 10
