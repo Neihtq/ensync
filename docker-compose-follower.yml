@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  follower:
+    build: .
+    container_name: ensync-follower
+    command: ./follower
+    network_mode: host
+    restart: unless-stopped
+    devices:
+      - /dev/snd:/dev/snd
+    environment:
+      - ALSA_CARD=default

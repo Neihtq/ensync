@@ -18,9 +18,9 @@ import (
 
 const (
 	logPrefix           = "[Main]"
-	followerServicePort = ":8080"
-	ntpPort             = ":9090"
-	webPort             = ":9999"
+	followerServicePort = ":65535"
+	ntpPort             = ":65534"
+	webPort             = ":65533"
 )
 
 func log(message string) {
