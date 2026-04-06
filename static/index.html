@@ -73,6 +73,16 @@
 
         .left-column {
             flex: 3;
+            display: flex;
+            gap: 20px;
+        }
+
+        .songs-section {
+            flex: 1;
+        }
+
+        .search-section {
+            flex: 1;
         }
 
         .right-column {
@@ -126,6 +136,50 @@
             background-color: #E6EEF7;
             font-weight: bold;
             color: #17385E;
+        }
+
+        /* Flex container for the box bodies to allow internal stretching */
+        .box-auto-height {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .box-body-fill {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .search-input-group {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+
+        .gamefaqs-input {
+            flex: 1;
+            border: 1px solid #A2B1C2;
+            padding: 4px;
+            font-family: Verdana, sans-serif;
+            font-size: 11px;
+        }
+
+        .search-result-item {
+            font-size: 11px;
+            line-height: 1.2;
+        }
+
+        .search-result-meta {
+            color: #666;
+            font-size: 10px;
+            display: block;
+        }
+
+        .span-full {
+            grid-column: 1 / -1;
+            width: 100%;
         }
 
         .classic-btn {
@@ -198,7 +252,7 @@
             bottom: 30px;
             font-size: 12px;
             font-weight: bold;
-            box-shadow: 0px 4px 10px rgba(0,0,0,0.5);
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.5);
         }
 
         #toast.show {
@@ -208,23 +262,51 @@
         }
 
         @-webkit-keyframes fadein {
-            from {bottom: 0; opacity: 0;} 
-            to {bottom: 30px; opacity: 1;}
+            from {
+                bottom: 0;
+                opacity: 0;
+            }
+
+            to {
+                bottom: 30px;
+                opacity: 1;
+            }
         }
 
         @keyframes fadein {
-            from {bottom: 0; opacity: 0;}
-            to {bottom: 30px; opacity: 1;}
+            from {
+                bottom: 0;
+                opacity: 0;
+            }
+
+            to {
+                bottom: 30px;
+                opacity: 1;
+            }
         }
 
         @-webkit-keyframes fadeout {
-            from {bottom: 30px; opacity: 1;} 
-            to {bottom: 0; opacity: 0;}
+            from {
+                bottom: 30px;
+                opacity: 1;
+            }
+
+            to {
+                bottom: 0;
+                opacity: 0;
+            }
         }
 
         @keyframes fadeout {
-            from {bottom: 30px; opacity: 1;}
-            to {bottom: 0; opacity: 0;}
+            from {
+                bottom: 30px;
+                opacity: 1;
+            }
+
+            to {
+                bottom: 0;
+                opacity: 0;
+            }
         }
     </style>
 </head>
@@ -241,16 +323,38 @@
         <!-- Main Content -->
         <div class="main-content">
 
-            <!-- Left Column: Songs -->
-            <div class="left-column">
-                <div class="box">
-                    <div class="box-header">Available Songs</div>
-                    <div class="box-content">
-                        <ul id="songs-list" class="gamefaqs-list"></ul>
-                        <div>
-                            <button id="push-btn" class="classic-btn" disabled>Add Selected Track To Queue</button>
+            <!-- Left Column: Songs & Search -->
+            <div class="left-column" style="flex-direction: column;">
+                <div style="display: flex; gap: 20px; width: 100%;">
+                    <!-- Available Songs -->
+                    <div class="songs-section" style="display: flex; flex-direction: column;">
+                        <div class="box" style="flex: 1; display: flex; flex-direction: column; margin-bottom: 10px;">
+                            <div class="box-header">Available Songs</div>
+                            <div class="box-content" style="flex: 1; display: flex; flex-direction: column;">
+                                <ul id="songs-list" class="gamefaqs-list" style="height: 334px;"></ul>
+                            </div>
                         </div>
                     </div>
+
+                    <!-- Search Section -->
+                    <div class="search-section" style="display: flex; flex-direction: column;">
+                        <div class="box" style="flex: 1; display: flex; flex-direction: column; margin-bottom: 10px;">
+                            <div class="box-header">Search</div>
+                            <div class="box-content" style="flex: 1; display: flex; flex-direction: column;">
+                                <div class="search-input-group">
+                                    <input type="text" id="search-input" class="gamefaqs-input"
+                                        placeholder="Artist, album, title...">
+                                    <button id="search-btn" class="classic-btn" style="margin-top:0">Search</button>
+                                </div>
+                                <ul id="search-results-list" class="gamefaqs-list" style="height: 300px;"></ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="width: 100%;">
+                    <button id="push-btn" class="classic-btn" style="width:100%; margin-top:0" disabled>Add Selected
+                        Track To Queue</button>
                 </div>
             </div>
 
@@ -267,7 +371,8 @@
 
                 <div class="box">
                     <div class="box-header">Now Playing</div>
-                    <div class="box-content" style="text-align: center; font-weight: bold; padding: 20px 10px; color: #17385E; background-color: #E6EEF7; font-size: 13px;">
+                    <div class="box-content"
+                        style="text-align: center; font-weight: bold; padding: 20px 10px; color: #17385E; background-color: #E6EEF7; font-size: 13px;">
                         <span id="now-playing-label">Idle (Waiting for Track)</span>
                     </div>
                 </div>
@@ -300,26 +405,81 @@
             const notifMsg = document.getElementById('notif-msg');
             const notifTitle = document.getElementById('notif-title');
 
-            // Load songs
+            const searchBtn = document.getElementById('search-btn');
+            const searchInput = document.getElementById('search-input');
+            const searchResultsList = document.getElementById('search-results-list');
+
+            let currentSelectedTrack = null;
+
+            function selectTrack(element, trackId, sourceList) {
+                // Deselect all in both lists
+                Array.from(songsList.children).forEach(child => child.classList.remove('selected'));
+                Array.from(searchResultsList.children).forEach(child => child.classList.remove('selected'));
+
+                element.classList.add('selected');
+                currentSelectedTrack = trackId;
+                pushBtn.disabled = false;
+            }
+
+            // Load local songs
             fetch('/songs')
                 .then(res => res.json())
                 .then(data => {
                     if (data && data.songs) {
                         data.songs.forEach(song => {
                             const li = document.createElement('li');
-                            li.textContent = song;
-                            li.addEventListener('click', () => {
-                                // Deselect all
-                                Array.from(songsList.children).forEach(child => child.classList.remove('selected'));
-                                // Select this one
-                                li.classList.add('selected');
-                                pushBtn.disabled = false;
-                                songsList.dataset.selectedValue = song;
-                            });
+                            li.innerHTML = `
+                                <div class="search-result-item">
+                                    <strong>${song.title}</strong>
+                                    <span class="search-result-meta">${song.artist} - ${song.album}</span>
+                                </div>
+                            `;
+                            li.addEventListener('click', () => selectTrack(li, song.id));
                             songsList.appendChild(li);
                         });
                     }
                 })
+
+            // Search Logic
+            function performSearch() {
+                const query = searchInput.value.trim();
+                if (!query) return;
+
+                searchBtn.disabled = true;
+                searchResultsList.innerHTML = '<li>Searching...</li>';
+
+                fetch(`/songs?query=${encodeURIComponent(query)}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        searchResultsList.innerHTML = '';
+                        searchBtn.disabled = false;
+                        if (data && data.songs && data.songs.length > 0) {
+                            data.songs.forEach(song => {
+                                const li = document.createElement('li');
+                                li.innerHTML = `
+                                    <div class="search-result-item">
+                                        <strong>${song.title}</strong>
+                                        <span class="search-result-meta">${song.artist} - ${song.album}</span>
+                                    </div>
+                                `;
+                                li.addEventListener('click', () => selectTrack(li, song.id));
+                                searchResultsList.appendChild(li);
+                            });
+                        } else {
+                            searchResultsList.innerHTML = '<li>No results found.</li>';
+                        }
+                    })
+                    .catch(err => {
+                        console.error("Search failed:", err);
+                        searchResultsList.innerHTML = '<li>Search failed.</li>';
+                        searchBtn.disabled = false;
+                    });
+            }
+
+            searchBtn.addEventListener('click', performSearch);
+            searchInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') performSearch();
+            });
 
             // Load followers
             fetch('/followers')
@@ -359,15 +519,14 @@
 
             // Push Track Action
             pushBtn.addEventListener('click', () => {
-                const selectedSong = songsList.dataset.selectedValue;
-                if (!selectedSong) return;
+                if (!currentSelectedTrack) return;
 
                 fetch('/tracks', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ trackId: selectedSong })
+                    body: JSON.stringify({ trackId: currentSelectedTrack })
                 })
                     .then(response => {
                         if (response.ok) {
@@ -384,13 +543,13 @@
             // SSE Listener for Combined Queue and Now Playing
             const nowPlayingLabel = document.getElementById('now-playing-label');
             const evtSource = new EventSource('/queue');
-            
-            evtSource.onmessage = function(event) {
+
+            evtSource.onmessage = function (event) {
                 const data = JSON.parse(event.data);
-                
+
                 // Update Now Playing
                 nowPlayingLabel.textContent = data.nowPlaying || 'Idle';
-                
+
                 // Update Queue List
                 queueList.innerHTML = '';
                 if (data && data.queueItems && data.queueItems.length > 0) {
@@ -409,8 +568,8 @@
                     queueList.appendChild(li);
                 }
             };
-            
-            evtSource.onerror = function(err) {
+
+            evtSource.onerror = function (err) {
                 console.error("EventSource connection lost", err);
                 nowPlayingLabel.textContent = 'Disconnected...';
                 queueList.innerHTML = '<li>Connection lost...</li>';

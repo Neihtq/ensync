@@ -27,9 +27,8 @@ func log(message string) {
 	logging.Log(logPrefix, message)
 }
 
-func provideSourceProvider() sourceprovider.SourceProvider {
-	root := "./assets"
-	return sourceprovider.NewAudioProvider(root)
+func provideNavidromeProvider() *sourceprovider.NaviDromeProvider {
+	return sourceprovider.NewNaviDromeProvider()
 }
 
 func provideFollowersRegistry() *follower.FollowersRegistry {
@@ -78,10 +77,12 @@ func main() {
 	clockSyncService := provideClockSyncService()
 	go clockSyncService.ExposeNTP(stop)
 
+	provider := provideNavidromeProvider()
+	log("Initialized Source Provider: Navidrome connector " + provider.Client.ApiVersion)
+
 	log("Start AudioStreamLoop")
-	sourceProvider := provideSourceProvider()
 	trackQueue := provideTrackQueue()
-	audioStreamer := provideStreamer(followersRegistry, sourceProvider, trackQueue)
+	audioStreamer := provideStreamer(followersRegistry, provider, trackQueue)
 	go audioStreamer.StreamAudioToAllLoop(stop)
 
 	log("Start Discovery Service")
@@ -89,7 +90,7 @@ func main() {
 	discoveryService.StartDiscovery()
 
 	log("Start Web Server")
-	webServer := provideWebserver(sourceProvider, followersRegistry, trackQueue)
+	webServer := provideWebserver(provider, followersRegistry, trackQueue)
 	trackQueue.SetCallbackHook(webServer.BroadcastQueueState)
 	go webServer.StartServer()
 

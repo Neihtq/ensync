@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"ensync/internal/grandmaster/follower"
+	"ensync/internal/grandmaster/navidrome"
 	"ensync/internal/grandmaster/queue"
 	"ensync/internal/grandmaster/sourceprovider"
 )
@@ -34,7 +35,7 @@ func TestNewWebServer(t *testing.T) {
 	}
 }
 
-func TestListSongs(t *testing.T) {
+func TestGetSongs(t *testing.T) {
 	provider := &sourceprovider.MockSourceProvider{}
 	registry := follower.NewFollowersRegistry()
 	trackQueue := queue.NewTrackQueue()
@@ -43,7 +44,7 @@ func TestListSongs(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/songs", nil)
 	rr := httptest.NewRecorder()
 
-	server.ListSongs(rr, req)
+	server.GetSongs(rr, req)
 
 	if status := rr.Code; status != http.StatusOK {
 		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusOK)
@@ -65,8 +66,45 @@ func TestListSongs(t *testing.T) {
 		t.Fatalf("Expected 'songs' key in response")
 	}
 
-	if len(songs) != 2 || songs[0] != "mock1" || songs[1] != "mock2" {
+	if len(songs) != 0 {
 		t.Errorf("Unexpected songs list: %v", songs)
+	}
+}
+
+func TestGetSongs_WithSearch(t *testing.T) {
+	provider := &sourceprovider.MockSourceProvider{}
+	registry := follower.NewFollowersRegistry()
+	trackQueue := queue.NewTrackQueue()
+	server := NewWebServer(":9999", provider, registry, trackQueue)
+
+	req := httptest.NewRequest(http.MethodGet, "/songs?query=oasis", nil)
+	rr := httptest.NewRecorder()
+
+	server.GetSongs(rr, req)
+
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusOK)
+	}
+
+	contentType := rr.Header().Get("Content-Type")
+	if contentType != "application/json" {
+		t.Errorf("Expected Content-Type application/json, got %s", contentType)
+	}
+
+	var response struct {
+		Songs []navidrome.Song `json:"songs"`
+	}
+	err := json.NewDecoder(rr.Body).Decode(&response)
+	if err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	if len(response.Songs) != 1 {
+		t.Fatalf("Expected 1 song in search result, got %d", len(response.Songs))
+	}
+
+	if response.Songs[0].Title != "Wonderwall" {
+		t.Errorf("Expected song title 'Wonderwall', got %s", response.Songs[0].Title)
 	}
 }
 
@@ -203,14 +241,14 @@ func TestBroadcastQueueState_SendsToConnections(t *testing.T) {
 	server.connections = append(server.connections, ch)
 	server.mu.Unlock()
 
-	server.BroadcastQueueState("song.mp3", []string{"next.mp3"})
+	server.BroadcastQueueState("mock1", []string{"mock2"})
 
 	select {
 	case state := <-ch:
-		if state.NowPlaying != "song.mp3" {
-			t.Errorf("expected NowPlaying 'song.mp3', got '%s'", state.NowPlaying)
+		if state.NowPlaying != "mock1" {
+			t.Errorf("expected NowPlaying 'mock1', got '%s'", state.NowPlaying)
 		}
-		if len(state.QueueItems) != 1 || state.QueueItems[0] != "next.mp3" {
+		if len(state.QueueItems) != 1 || state.QueueItems[0] != "mock2" {
 			t.Errorf("unexpected QueueItems: %v", state.QueueItems)
 		}
 	case <-time.After(100 * time.Millisecond):
@@ -233,7 +271,7 @@ func TestBroadcastQueueState_SkipsFullChannels(t *testing.T) {
 	server.mu.Unlock()
 
 	// Should not block even though the channel is full
-	server.BroadcastQueueState("new.mp3", []string{})
+	server.BroadcastQueueState("mock1", []string{})
 
 	// Channel should still have the old message (non-blocking send skipped)
 	state := <-ch
@@ -259,8 +297,8 @@ func TestBroadcastQueueState_EmptyQueueItems(t *testing.T) {
 	if state.NowPlaying != "" {
 		t.Errorf("expected empty NowPlaying, got '%s'", state.NowPlaying)
 	}
-	if state.QueueItems != nil {
-		t.Errorf("expected nil QueueItems, got %v", state.QueueItems)
+	if len(state.QueueItems) != 0 {
+		t.Errorf("expected empty QueueItems, got %v", state.QueueItems)
 	}
 }
 
@@ -286,14 +324,14 @@ func TestStreamQueue_ConnectAndReceive(t *testing.T) {
 
 	// Wait for registration
 	time.Sleep(50 * time.Millisecond)
-	
+
 	server.BroadcastQueueState("test.mp3", []string{"next.mp3"})
-	
+
 	// Give it a moment to process
 	time.Sleep(50 * time.Millisecond)
 	cancel()
 	wg.Wait()
-	
+
 	responseBody := rr.Body.String()
 	if !strings.Contains(responseBody, "test.mp3") {
 		t.Errorf("expected response to contain test.mp3, got %s", responseBody)
@@ -320,22 +358,22 @@ func TestStreamQueue_DisconnectRemovesChannel(t *testing.T) {
 
 	// Wait for registration
 	time.Sleep(50 * time.Millisecond)
-	
+
 	server.mu.Lock()
 	countBefore := len(server.connections)
 	server.mu.Unlock()
-	
+
 	if countBefore != 1 {
 		t.Fatalf("expected 1 connection, got %d", countBefore)
 	}
 
 	cancel() // Trigger disconnect
 	wg.Wait()
-	
+
 	server.mu.Lock()
 	countAfter := len(server.connections)
 	server.mu.Unlock()
-	
+
 	if countAfter != 0 {
 		t.Errorf("expected 0 connections after disconnect, got %d", countAfter)
 	}
