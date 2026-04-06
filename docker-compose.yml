@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  grandmaster:
+    build: .
+    container_name: ensync-grandmaster
+    command: ./grandmaster
+    network_mode: host
+    restart: unless-stopped
+    environment:
+      - NAVIDROME_URL=http://your-navidrome-ip:4533
+      - NAVIDROME_USER=your_username
+      - NAVIDROME_PASSWORD=your_password
+    volumes:
+      - ./static:/app/static 
