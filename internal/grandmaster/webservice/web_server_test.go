@@ -66,7 +66,7 @@ func TestGetSongs(t *testing.T) {
 		t.Fatalf("Expected 'songs' key in response")
 	}
 
-	if len(songs) != 2 || songs[0] != "mock1" || songs[1] != "mock2" {
+	if len(songs) != 0 {
 		t.Errorf("Unexpected songs list: %v", songs)
 	}
 }

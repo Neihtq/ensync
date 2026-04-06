@@ -381,8 +381,13 @@
                     if (data && data.songs) {
                         data.songs.forEach(song => {
                             const li = document.createElement('li');
-                            li.textContent = song;
-                            li.addEventListener('click', () => selectTrack(li, song));
+                            li.innerHTML = `
+                                <div class="search-result-item">
+                                    <strong>${song.title}</strong>
+                                    <span class="search-result-meta">${song.artist} - ${song.album}</span>
+                                </div>
+                            `;
+                            li.addEventListener('click', () => selectTrack(li, song.id));
                             songsList.appendChild(li);
                         });
                     }

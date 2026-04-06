@@ -96,6 +96,18 @@ func (client *NavidromeClient) GetSong(songID string) (*Song, error) {
 	return result.SubsonicResponse.Song, nil
 }
 
+func (client *NavidromeClient) GetRandomSongs() ([]Song, error) {
+	resultSize := "50"
+	params := url.Values{}
+	params.Set("size", resultSize)
+
+	result, err := client.callGet("getRandomSongs", params)
+	if err != nil {
+		return nil, err
+	}
+	return result.SubsonicResponse.RandomSongs.Song, nil
+}
+
 func (client *NavidromeClient) GetStream(songID string) (io.ReadCloser, string, error) {
 	params := url.Values{}
 	params.Set("id", songID)

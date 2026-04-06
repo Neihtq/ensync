@@ -27,11 +27,6 @@ func log(message string) {
 	logging.Log(logPrefix, message)
 }
 
-func provideSourceProvider() sourceprovider.SourceProvider {
-	root := "./assets"
-	return sourceprovider.NewAudioProvider(root)
-}
-
 func provideNavidromeProvider() *sourceprovider.NaviDromeProvider {
 	return sourceprovider.NewNaviDromeProvider()
 }

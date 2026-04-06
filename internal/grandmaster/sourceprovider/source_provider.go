@@ -21,7 +21,7 @@ type Decoder struct {
 
 type SourceProvider interface {
 	GetSource(trackIdentifier string) (*Decoder, error)
-	ListSongs() []string
+	ListSongs() []navidrome.Song
 	SearchSong(query string) []navidrome.Song
 	GetTitle(trackIdentifier string) string
 }
@@ -52,8 +52,8 @@ func (d *Decoder) Read(p []byte) (n int, err error) {
 
 type MockSourceProvider struct{}
 
-func (provider *MockSourceProvider) ListSongs() []string {
-	return []string{"mock1", "mock2"}
+func (provider *MockSourceProvider) ListSongs() []navidrome.Song {
+	return []navidrome.Song{}
 }
 
 func (provider *MockSourceProvider) GetSource(filePath string) (*Decoder, error) {

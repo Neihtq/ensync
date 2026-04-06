@@ -71,7 +71,7 @@ func (server *WebServer) GetSongs(writer http.ResponseWriter, request *http.Requ
 		json.NewEncoder(writer).Encode(response)
 	} else {
 		songs := server.SourceProvider.ListSongs()
-		response := map[string][]string{
+		response := map[string][]navidrome.Song{
 			"songs": songs,
 		}
 		json.NewEncoder(writer).Encode(response)

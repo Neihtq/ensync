@@ -9,6 +9,7 @@ type SubsonicResponse struct {
 	Version string    `json:"version"`
 	Error   *APIError `json:"error,omitempty"`
 
+	RandomSongs   *RandomSongs   `json:"RandomSongs,omitempty"`
 	SearchResult3 *SearchResult3 `json:"searchResult3,omitempty"`
 	Song          *Song          `json:"song,omitempty"`
 }
@@ -16,6 +17,10 @@ type SubsonicResponse struct {
 type APIError struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
+}
+
+type RandomSongs struct {
+	Song []Song `json:"song"`
 }
 
 type SearchResult3 struct {

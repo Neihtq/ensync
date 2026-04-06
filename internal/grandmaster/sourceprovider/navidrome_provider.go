@@ -59,8 +59,14 @@ func (provider *NaviDromeProvider) GetSource(trackIdentifier string) (*Decoder, 
 	return decoder, nil
 }
 
-func (provider *NaviDromeProvider) ListSongs() []string {
-	return []string{}
+func (provider *NaviDromeProvider) ListSongs() []navidrome.Song {
+	songs, err := provider.Client.GetRandomSongs()
+	if err != nil {
+		fmt.Println("Error calling /getRandomSongs", err)
+		return []navidrome.Song{}
+	}
+
+	return songs
 }
 
 func (provider *NaviDromeProvider) SearchSong(query string) []navidrome.Song {
