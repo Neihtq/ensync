@@ -109,3 +109,88 @@ func TestMockSourceProvider_ListSongs(t *testing.T) {
 		t.Errorf("Expected mock songs ['mock1', 'mock2'], got %v", songs)
 	}
 }
+
+func TestFloatToInt16_Clamping(t *testing.T) {
+	if v := floatToInt16(0.0); v != 0 {
+		t.Errorf("expected 0, got %d", v)
+	}
+	if v := floatToInt16(1.0); v != 32767 {
+		t.Errorf("expected 32767, got %d", v)
+	}
+	if v := floatToInt16(-1.0); v != -32767 {
+		t.Errorf("expected -32767, got %d", v)
+	}
+	if v := floatToInt16(2.5); v != 32767 {
+		t.Errorf("expected clamped 32767, got %d", v)
+	}
+	if v := floatToInt16(-3.0); v != -32767 {
+		t.Errorf("expected clamped -32767, got %d", v)
+	}
+}
+
+func TestDecoder_Close(t *testing.T) {
+	provider := &MockSourceProvider{}
+	decoder, err := provider.GetSource("test")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	err = decoder.Close()
+	if err != nil {
+		t.Errorf("unexpected error on Close: %v", err)
+	}
+}
+
+func TestDecoder_Read_EOF(t *testing.T) {
+	provider := &MockSourceProvider{}
+	decoder, _ := provider.GetSource("test")
+
+	buf := make([]byte, 4096)
+	totalRead := 0
+	for {
+		n, err := decoder.Read(buf)
+		totalRead += n
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	}
+	if totalRead == 0 {
+		t.Error("expected to read some bytes before EOF")
+	}
+}
+
+func TestAudioProvider_GetSource_Success(t *testing.T) {
+	// Try to use a real mp3 from assets if it exists
+	assetsDir := "../../../assets"
+	if _, err := os.Stat(assetsDir); os.IsNotExist(err) {
+		t.Skip("assets directory not found, skipping real mp3 test")
+	}
+
+	provider := NewAudioProvider(assetsDir)
+	songs := provider.ListSongs()
+	if len(songs) == 0 {
+		t.Skip("no mp3 files in assets, skipping real mp3 test")
+	}
+
+	decoder, err := provider.GetSource(songs[0])
+	if err != nil {
+		t.Fatalf("Failed to get source for %s: %v", songs[0], err)
+	}
+	defer decoder.Close()
+
+	if decoder.Streamer == nil {
+		t.Fatal("expected non-nil streamer")
+	}
+
+	// Try reading a bit
+	buf := make([]byte, 1024)
+	n, err := decoder.Read(buf)
+	if err != nil && err != io.EOF {
+		t.Errorf("Unexpected error reading: %v", err)
+	}
+	if n == 0 && err != io.EOF {
+		t.Errorf("Expected to read some bytes")
+	}
+}
