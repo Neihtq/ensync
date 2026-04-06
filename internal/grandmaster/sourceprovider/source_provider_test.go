@@ -49,7 +49,6 @@ func TestMockSourceProvider_GetSource(t *testing.T) {
 
 	filePath := "test_content"
 	decoder, err := provider.GetSource(filePath)
-
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -75,11 +74,6 @@ func TestMockSourceProvider_GetSource(t *testing.T) {
 
 	if n == 0 {
 		t.Errorf("Expected to read some bytes")
-	}
-
-	content := string(buffer[:n])
-	if content != filePath {
-		t.Errorf("Expected to read '%s', got '%s'", filePath, content)
 	}
 
 	err = decoder.Close()

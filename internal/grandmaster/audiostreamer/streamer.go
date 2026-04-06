@@ -67,7 +67,7 @@ func (streamer *AudioStreamer) SetCallbackHook(callback func(trackID string)) {
 	streamer.OnTrackChanged = callback
 }
 
-func (streamer *AudioStreamer) StreamAudioToAll() {
+func (streamer *AudioStreamer) StreamAudioToAll(stop chan struct{}) {
 	trackID := streamer.TrackQueue.PopFront()
 	streamer.TrackQueue.SetNowPlaying(trackID)
 	logging.Log(logPrefix, "Stream "+trackID)
@@ -88,28 +88,34 @@ func (streamer *AudioStreamer) StreamAudioToAll() {
 	buffer := make([]byte, 3528)
 
 	for {
-		streamer.MediaClock.UpdateMediaTime()
-		if streamer.MediaClock.GetSentTimeInt64()-streamer.MediaClock.GetMediaTimeInt64() > streamer.LookAhead {
-			<-ticker.C
-			continue
+		select {
+		case <-stop:
+			logging.Log(logPrefix, "Cancelling song.")
+			return
+		default:
+			streamer.MediaClock.UpdateMediaTime()
+			if streamer.MediaClock.GetSentTimeInt64()-streamer.MediaClock.GetMediaTimeInt64() > streamer.LookAhead {
+				<-ticker.C
+				continue
+			}
+
+			dataSize, err := audioSource.Read(buffer)
+			if dataSize == 0 || err != nil {
+				logging.Log(logPrefix, "Exiting play loop: n="+strconv.Itoa(dataSize)+" err="+err.Error())
+				return
+			}
+
+			envelope := streamer.prepareEnvelope(buffer, dataSize, int(audioSource.SampleRate))
+
+			for _, f := range streamer.Followers.Registry {
+				streamAudioToFollower(envelope, f)
+			}
+
+			durationSent := int64(dataSize) * 1e9 / (audioSource.SampleRate * audioSource.Channels * 2)
+			streamer.MediaClock.AddToSentTime(durationSent)
+
+			time.Sleep(2 * time.Millisecond)
 		}
-
-		dataSize, err := audioSource.Read(buffer)
-		if dataSize == 0 || err != nil {
-			logging.Log(logPrefix, "Exiting play loop: n="+strconv.Itoa(dataSize)+" err="+err.Error())
-			break
-		}
-
-		envelope := streamer.prepareEnvelope(buffer, dataSize, int(audioSource.SampleRate))
-
-		for _, f := range streamer.Followers.Registry {
-			streamAudioToFollower(envelope, f)
-		}
-
-		durationSent := int64(dataSize) * 1e9 / (audioSource.SampleRate * audioSource.Channels * 2)
-		streamer.MediaClock.AddToSentTime(durationSent)
-
-		time.Sleep(2 * time.Millisecond)
 	}
 }
 
@@ -151,7 +157,7 @@ func (streamer *AudioStreamer) StreamAudioToAllLoop(stop chan struct{}) {
 			streamer.MediaClock = *clock.NewMediaClock()
 			streamer.MediaClock.UpdateStartTime(int(streamer.LookAhead))
 			streamer.mu.Unlock()
-			streamer.StreamAudioToAll()
+			streamer.StreamAudioToAll(stop)
 		}
 	}
 }

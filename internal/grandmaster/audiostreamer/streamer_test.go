@@ -54,7 +54,8 @@ func TestStreamAudioToAll(t *testing.T) {
 	// act
 	audioStreamer := NewAudioStreamer(followers, duration, lookAhead, &mockSourceProvider, duration, trackQueue)
 	audioStreamer.AddToQueue(filePath)
-	audioStreamer.StreamAudioToAll()
+	stop := make(chan struct{})
+	audioStreamer.StreamAudioToAll(stop)
 
 	// assert
 	queueLength := audioStreamer.TrackQueue.Len()
