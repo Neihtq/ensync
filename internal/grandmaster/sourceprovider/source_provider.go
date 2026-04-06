@@ -5,6 +5,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/hajimehoshi/go-mp3"
@@ -18,23 +19,28 @@ type Decoder struct {
 }
 
 type SourceProvider interface {
-	GetSource(filePath string) *Decoder
+	GetSource(trackIdentifier string) *Decoder
 	ListSongs() []string
 }
 
 type AudioProvider struct {
-	root fs.FS
+	rootFs fs.FS
+	root   string
 }
 
 func NewAudioProvider(root string) *AudioProvider {
-	dir := os.DirFS(root)
-	return &AudioProvider{root: dir}
+	rootFs := os.DirFS(root)
+	return &AudioProvider{
+		rootFs: rootFs,
+		root:   root,
+	}
 }
 
-func (provider *AudioProvider) GetSource(filePath string) *Decoder {
-	audioSource, err := os.Open(filePath)
+func (provider *AudioProvider) GetSource(trackIdentifier string) *Decoder {
+	path := filepath.Join(provider.root, trackIdentifier)
+	audioSource, err := os.Open(path)
 	if err != nil {
-		panic("Error opening audio source at " + filePath)
+		panic("Error opening audio source at " + path)
 	}
 
 	decoder, err := mp3.NewDecoder(audioSource)
@@ -51,7 +57,7 @@ func (provider *AudioProvider) GetSource(filePath string) *Decoder {
 }
 
 func (provider *AudioProvider) ListSongs() []string {
-	files, _ := fs.Glob(provider.root, "*.mp3")
+	files, _ := fs.Glob(provider.rootFs, "*.mp3")
 	return files
 }
 

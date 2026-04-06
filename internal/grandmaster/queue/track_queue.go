@@ -34,3 +34,10 @@ func (tq *TrackQueue) Len() int {
 	defer tq.mu.Unlock()
 	return tq.queue.Len()
 }
+
+func (tq *TrackQueue) Last() string {
+	tq.mu.Lock()
+	defer tq.mu.Unlock()
+
+	return tq.queue.Back()
+}

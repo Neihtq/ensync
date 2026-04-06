@@ -62,10 +62,10 @@ func (streamer *AudioStreamer) AddToQueue(filePath string) {
 }
 
 func (streamer *AudioStreamer) StreamAudioToAll() {
-	filePath := streamer.TrackQueue.PopFront()
-	logging.Log(logPrefix, "Stream "+filePath)
+	trackID := streamer.TrackQueue.PopFront()
+	logging.Log(logPrefix, "Stream "+trackID)
 
-	audioSource := streamer.SourceProvider.GetSource(filePath)
+	audioSource := streamer.SourceProvider.GetSource(trackID)
 	ticker := time.NewTicker(streamer.StreamingInterval)
 	defer ticker.Stop()
 

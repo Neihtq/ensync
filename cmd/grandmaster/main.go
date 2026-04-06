@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -92,14 +91,6 @@ func main() {
 	log("Start Web Server")
 	webServer := provideWebserver(sourceProvider, followersRegistry, trackQueue)
 	go webServer.StartServer()
-
-	var input string
-	fmt.Println("Continue? [y]es")
-	fmt.Scan(&input)
-	if input == "y" {
-		filePath := "./assets/test.mp3"
-		audioStreamer.AddToQueue(filePath)
-	}
 
 	<-sigChan
 	log("Shutting down...")
