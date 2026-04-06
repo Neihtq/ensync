@@ -311,7 +311,12 @@ func TestStreamQueue_DisconnectRemovesChannel(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	req = req.WithContext(ctx)
 
-	go server.StreamQueue(rr, req)
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		server.StreamQueue(rr, req)
+	}()
 
 	// Wait for registration
 	time.Sleep(50 * time.Millisecond)
@@ -325,9 +330,7 @@ func TestStreamQueue_DisconnectRemovesChannel(t *testing.T) {
 	}
 
 	cancel() // Trigger disconnect
-	
-	// Wait for cleanup
-	time.Sleep(50 * time.Millisecond)
+	wg.Wait()
 	
 	server.mu.Lock()
 	countAfter := len(server.connections)
