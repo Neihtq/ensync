@@ -100,23 +100,32 @@
             padding: 12px;
         }
 
-        .gamefaqs-select {
+        .gamefaqs-list {
             width: 100%;
             height: 300px;
             border: 1px solid #A2B1C2;
             font-family: Verdana, sans-serif;
             font-size: 12px;
-            padding: 4px;
-            outline: none;
+            overflow-y: auto;
+            margin: 0;
+            padding: 0;
+            list-style: none;
         }
 
-        .gamefaqs-select option {
-            padding: 3px 5px;
+        .gamefaqs-list li {
+            padding: 6px 10px;
             border-bottom: 1px solid #F0F0F0;
+            cursor: pointer;
         }
 
-        .gamefaqs-select option:nth-child(even) {
+        .gamefaqs-list li:nth-child(even) {
             background-color: #F8F9FA;
+        }
+
+        .gamefaqs-list li.selected {
+            background-color: #E6EEF7;
+            font-weight: bold;
+            color: #17385E;
         }
 
         .classic-btn {
@@ -174,40 +183,48 @@
             /* Occasional GameFAQs orange accent */
         }
 
-        /* Notification Alert GameFAQs style */
-        #notification {
-            display: none;
-            position: fixed;
-            top: 40%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 350px;
-            background-color: #FFFFFF;
-            border: 2px solid #17385E;
-            box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.3);
-            z-index: 1000;
-        }
-
-        #notification .box-header {
+        /* Toast Notification style */
+        #toast {
+            visibility: hidden;
+            min-width: 250px;
             background-color: #17385E;
-            /* Dark blue header for the alert */
-            display: flex;
-            justify-content: space-between;
-        }
-
-        #notification .box-content {
+            color: #fff;
             text-align: center;
-            padding: 25px 15px;
+            border: 2px solid #F39C12;
+            padding: 16px;
+            position: fixed;
+            z-index: 1000;
+            right: 30px;
+            bottom: 30px;
+            font-size: 12px;
+            font-weight: bold;
+            box-shadow: 0px 4px 10px rgba(0,0,0,0.5);
         }
 
-        .close-btn {
-            color: #A0B6D0;
-            cursor: pointer;
-            font-weight: normal;
+        #toast.show {
+            visibility: visible;
+            -webkit-animation: fadein 0.5s, fadeout 0.5s 2.5s;
+            animation: fadein 0.5s, fadeout 0.5s 2.5s;
         }
 
-        .close-btn:hover {
-            color: #FFFFFF;
+        @-webkit-keyframes fadein {
+            from {bottom: 0; opacity: 0;} 
+            to {bottom: 30px; opacity: 1;}
+        }
+
+        @keyframes fadein {
+            from {bottom: 0; opacity: 0;}
+            to {bottom: 30px; opacity: 1;}
+        }
+
+        @-webkit-keyframes fadeout {
+            from {bottom: 30px; opacity: 1;} 
+            to {bottom: 0; opacity: 0;}
+        }
+
+        @keyframes fadeout {
+            from {bottom: 30px; opacity: 1;}
+            to {bottom: 0; opacity: 0;}
         }
     </style>
 </head>
@@ -229,7 +246,7 @@
                 <div class="box">
                     <div class="box-header">Available Songs</div>
                     <div class="box-content">
-                        <select id="songs-list" size="15" class="gamefaqs-select"></select>
+                        <ul id="songs-list" class="gamefaqs-list"></ul>
                         <div>
                             <button id="push-btn" class="classic-btn" disabled>Add Selected Track To Queue</button>
                         </div>
@@ -270,19 +287,8 @@
         </div>
     </div>
 
-    <!-- Retro Alert Popup -->
-    <div id="notification">
-        <div class="box-header">
-            <span id="notif-title">System Message</span>
-            <span class="close-btn" onclick="document.getElementById('notification').style.display='none'">[X]</span>
-        </div>
-        <div class="box-content">
-            <p id="notif-msg" style="margin-top: 0; font-weight: bold; font-size: 12px; color: #333;">Track pushed
-                successfully!</p>
-            <button class="classic-btn" onclick="document.getElementById('notification').style.display='none'"
-                style="margin-top: 15px; min-width: 80px;">OK</button>
-        </div>
-    </div>
+    <!-- Retro Toast Notification -->
+    <div id="toast">Track pushed successfully!</div>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
@@ -300,16 +306,20 @@
                 .then(data => {
                     if (data && data.songs) {
                         data.songs.forEach(song => {
-                            const option = document.createElement('option');
-                            option.value = song;
-                            option.textContent = song;
-                            songsList.appendChild(option);
+                            const li = document.createElement('li');
+                            li.textContent = song;
+                            li.addEventListener('click', () => {
+                                // Deselect all
+                                Array.from(songsList.children).forEach(child => child.classList.remove('selected'));
+                                // Select this one
+                                li.classList.add('selected');
+                                pushBtn.disabled = false;
+                                songsList.dataset.selectedValue = song;
+                            });
+                            songsList.appendChild(li);
                         });
                     }
                 })
-                .catch(err => {
-                    console.error("Failed to load songs:", err);
-                });
 
             // Load followers
             fetch('/followers')
@@ -365,16 +375,17 @@
             }
             loadQueue();
 
-            // Enable button when song selected
-            songsList.addEventListener('change', () => {
-                if (songsList.selectedIndex !== -1) {
-                    pushBtn.disabled = false;
-                }
-            });
+            // Toast helper
+            function showToast(message) {
+                const toast = document.getElementById('toast');
+                toast.textContent = message;
+                toast.className = "show";
+                setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 3000);
+            }
 
             // Push Track Action
             pushBtn.addEventListener('click', () => {
-                const selectedSong = songsList.value;
+                const selectedSong = songsList.dataset.selectedValue;
                 if (!selectedSong) return;
 
                 fetch('/tracks', {
@@ -386,19 +397,14 @@
                 })
                     .then(response => {
                         if (response.ok) {
-                            notifMsg.textContent = 'Track successfully pushed to queue!';
-                            notifTitle.textContent = 'Action Successful';
+                            showToast('Track successfully pushed to queue!');
                             loadQueue();
                         } else {
-                            notifMsg.textContent = 'Failed to push track (Error ' + response.status + ').';
-                            notifTitle.textContent = 'Action Failed';
+                            showToast('Failed to push track (Error ' + response.status + ').');
                         }
-                        notification.style.display = 'block';
                     })
                     .catch(err => {
-                        notifMsg.textContent = 'Network error: Could not connect to Grandmaster.';
-                        notifTitle.textContent = 'System Error';
-                        notification.style.display = 'block';
+                        showToast('Network error: Could not connect to Grandmaster.');
                     });
             });
 
