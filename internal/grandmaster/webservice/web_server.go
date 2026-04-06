@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"ensync/internal/grandmaster/follower"
+	"ensync/internal/grandmaster/navidrome"
 	"ensync/internal/grandmaster/queue"
 	"ensync/internal/grandmaster/sourceprovider"
 )
@@ -49,7 +50,7 @@ func (server *WebServer) StartServer() {
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "./static/index.html")
 	})
-	mux.HandleFunc("GET /songs", server.ListSongs)
+	mux.HandleFunc("GET /songs", server.GetSongs)
 	mux.HandleFunc("GET /followers", server.ListFollowers)
 	mux.HandleFunc("POST /tracks", server.PushTrack)
 	mux.HandleFunc("GET /queue", server.StreamQueue)
@@ -58,14 +59,23 @@ func (server *WebServer) StartServer() {
 	http.ListenAndServe(server.Port, mux)
 }
 
-func (server *WebServer) ListSongs(writer http.ResponseWriter, _ *http.Request) {
+func (server *WebServer) GetSongs(writer http.ResponseWriter, request *http.Request) {
 	writer.Header().Set("Content-Type", "application/json")
-	songs := server.SourceProvider.ListSongs()
+	searchQuery := request.URL.Query().Get("query")
 
-	response := map[string][]string{
-		"songs": songs,
+	if searchQuery != "" {
+		songs := server.SourceProvider.SearchSong(searchQuery)
+		response := map[string][]navidrome.Song{
+			"songs": songs,
+		}
+		json.NewEncoder(writer).Encode(response)
+	} else {
+		songs := server.SourceProvider.ListSongs()
+		response := map[string][]string{
+			"songs": songs,
+		}
+		json.NewEncoder(writer).Encode(response)
 	}
-	json.NewEncoder(writer).Encode(response)
 }
 
 func (server *WebServer) ListFollowers(writer http.ResponseWriter, _ *http.Request) {

@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"ensync/internal/grandmaster/navidrome"
+
 	"github.com/gopxl/beep/v2/mp3"
 )
 
@@ -49,4 +51,8 @@ func (provider *AudioProvider) GetSource(trackIdentifier string) (*Decoder, erro
 func (provider *AudioProvider) ListSongs() []string {
 	files, _ := fs.Glob(provider.rootFs, "*.mp3")
 	return files
+}
+
+func (provider *AudioProvider) SearchSong(query string) []navidrome.Song {
+	return []navidrome.Song{}
 }

@@ -6,6 +6,8 @@ import (
 	"io"
 	"strings"
 
+	"ensync/internal/grandmaster/navidrome"
+
 	"github.com/gopxl/beep/v2"
 	"github.com/gopxl/beep/v2/generators"
 )
@@ -20,6 +22,7 @@ type Decoder struct {
 type SourceProvider interface {
 	GetSource(trackIdentifier string) (*Decoder, error)
 	ListSongs() []string
+	SearchSong(query string) []navidrome.Song
 }
 
 func (d *Decoder) Close() error {
@@ -61,4 +64,8 @@ func (provider *MockSourceProvider) GetSource(filePath string) (*Decoder, error)
 		SampleRate: sampleRate,
 		Channels:   2,
 	}, nil
+}
+
+func (provider *MockSourceProvider) SearchSong(query string) []navidrome.Song {
+	return []navidrome.Song{}
 }

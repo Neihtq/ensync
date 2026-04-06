@@ -34,7 +34,7 @@ func TestNewWebServer(t *testing.T) {
 	}
 }
 
-func TestListSongs(t *testing.T) {
+func TestGetSongs(t *testing.T) {
 	provider := &sourceprovider.MockSourceProvider{}
 	registry := follower.NewFollowersRegistry()
 	trackQueue := queue.NewTrackQueue()
@@ -43,7 +43,7 @@ func TestListSongs(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/songs", nil)
 	rr := httptest.NewRecorder()
 
-	server.ListSongs(rr, req)
+	server.GetSongs(rr, req)
 
 	if status := rr.Code; status != http.StatusOK {
 		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusOK)
@@ -286,14 +286,14 @@ func TestStreamQueue_ConnectAndReceive(t *testing.T) {
 
 	// Wait for registration
 	time.Sleep(50 * time.Millisecond)
-	
+
 	server.BroadcastQueueState("test.mp3", []string{"next.mp3"})
-	
+
 	// Give it a moment to process
 	time.Sleep(50 * time.Millisecond)
 	cancel()
 	wg.Wait()
-	
+
 	responseBody := rr.Body.String()
 	if !strings.Contains(responseBody, "test.mp3") {
 		t.Errorf("expected response to contain test.mp3, got %s", responseBody)
@@ -320,22 +320,22 @@ func TestStreamQueue_DisconnectRemovesChannel(t *testing.T) {
 
 	// Wait for registration
 	time.Sleep(50 * time.Millisecond)
-	
+
 	server.mu.Lock()
 	countBefore := len(server.connections)
 	server.mu.Unlock()
-	
+
 	if countBefore != 1 {
 		t.Fatalf("expected 1 connection, got %d", countBefore)
 	}
 
 	cancel() // Trigger disconnect
 	wg.Wait()
-	
+
 	server.mu.Lock()
 	countAfter := len(server.connections)
 	server.mu.Unlock()
-	
+
 	if countAfter != 0 {
 		t.Errorf("expected 0 connections after disconnect, got %d", countAfter)
 	}
