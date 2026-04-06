@@ -63,7 +63,7 @@ func provideWebserver(
 	followersRegistry *follower.FollowersRegistry,
 	trackQueue *queue.TrackQueue,
 ) *webservice.WebServer {
-	return webservice.NewWebServer(webPort, sourceProvider, followersRegistry, trackQueue)
+	return webservice.NewWebServer(webPort, ntpPort, sourceProvider, followersRegistry, trackQueue)
 }
 
 func main() {

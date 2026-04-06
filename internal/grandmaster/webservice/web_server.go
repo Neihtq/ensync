@@ -22,10 +22,15 @@ type QueueState struct {
 	QueueItems []string `json:"queueItems"`
 }
 
+type SubscribeFollowerRequest struct {
+	URL string `json:"url"`
+}
+
 type WebServer struct {
 	mu                sync.Mutex
 	connections       []chan QueueState
 	Port              string
+	NTPPort           string
 	SourceProvider    sourceprovider.SourceProvider
 	FollowersRegistry *follower.FollowersRegistry
 	TrackQueue        *queue.TrackQueue
@@ -33,12 +38,14 @@ type WebServer struct {
 
 func NewWebServer(
 	port string,
+	ntpPort string,
 	sourceProvider sourceprovider.SourceProvider,
 	followersRegistry *follower.FollowersRegistry,
 	trackQueue *queue.TrackQueue,
 ) *WebServer {
 	return &WebServer{
 		Port:              port,
+		NTPPort:           ntpPort,
 		SourceProvider:    sourceProvider,
 		FollowersRegistry: followersRegistry,
 		TrackQueue:        trackQueue,
@@ -52,6 +59,7 @@ func (server *WebServer) StartServer() {
 	})
 	mux.HandleFunc("GET /songs", server.GetSongs)
 	mux.HandleFunc("GET /followers", server.ListFollowers)
+	mux.HandleFunc("POST /followers", server.SubscribeFollowerManually)
 	mux.HandleFunc("POST /tracks", server.PushTrack)
 	mux.HandleFunc("GET /queue", server.StreamQueue)
 
@@ -86,6 +94,27 @@ func (server *WebServer) ListFollowers(writer http.ResponseWriter, _ *http.Reque
 		"followerUrls": followerUrls,
 	}
 	json.NewEncoder(writer).Encode(response)
+}
+
+func (server *WebServer) SubscribeFollowerManually(writer http.ResponseWriter, request *http.Request) {
+	var data SubscribeFollowerRequest
+	err := json.NewDecoder(request.Body).Decode(&data)
+	if err != nil || data.URL == "" {
+		http.Error(writer, "Invalid request: 'url' field is required", http.StatusBadRequest)
+		return
+	}
+
+	fmt.Println("[WebServer] Manual follower subscription:", data.URL)
+	err = follower.SubscribeFollower(server.FollowersRegistry, data.URL, server.NTPPort)
+	if err != nil {
+		fmt.Println("[WebServer] Failed to subscribe follower:", err)
+		http.Error(writer, "Failed to subscribe follower: "+err.Error(), http.StatusBadGateway)
+		return
+	}
+
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(http.StatusCreated)
+	json.NewEncoder(writer).Encode(map[string]string{"status": "ok"})
 }
 
 func (server *WebServer) PushTrack(writer http.ResponseWriter, request *http.Request) {

@@ -363,6 +363,12 @@
 
                 <div class="box">
                     <div class="box-header">Connected Followers</div>
+                    <div class="box-content" style="padding: 12px 12px 0 12px;">
+                        <div class="search-input-group">
+                            <input type="text" id="follower-url-input" class="gamefaqs-input" placeholder="ip:port/endpoint">
+                            <button id="subscribe-btn" class="classic-btn" style="margin-top:0" disabled>Subscribe</button>
+                        </div>
+                    </div>
                     <!-- padding:0 to make list items flush like a standard forum sidebar -->
                     <div class="box-content" style="padding: 0; max-height: 200px; overflow-y: auto;">
                         <ul id="followers-list" class="sidebar-list"></ul>
@@ -506,6 +512,58 @@
                     li.textContent = "Error loading followers.";
                     followersList.appendChild(li);
                 });
+
+            // Subscribe Follower Logic
+            const subscribeBtn = document.getElementById('subscribe-btn');
+            const followerUrlInput = document.getElementById('follower-url-input');
+
+            followerUrlInput.addEventListener('input', () => {
+                subscribeBtn.disabled = !followerUrlInput.value.trim();
+            });
+
+            function subscribeFollower() {
+                const url = followerUrlInput.value.trim();
+                if (!url) return;
+
+                subscribeBtn.disabled = true;
+                fetch('/followers', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: url })
+                })
+                    .then(response => {
+                        if (response.ok) {
+                            showToast('Follower subscribed successfully!');
+                            followerUrlInput.value = '';
+                            subscribeBtn.disabled = true;
+                            // Reload followers list
+                            followersList.innerHTML = '';
+                            return fetch('/followers').then(r => r.json());
+                        } else {
+                            return response.text().then(t => { throw new Error(t); });
+                        }
+                    })
+                    .then(data => {
+                        if (data && data.followerUrls) {
+                            data.followerUrls.forEach(f => {
+                                const li = document.createElement('li');
+                                const p = document.createElement('p');
+                                p.textContent = f;
+                                li.appendChild(p);
+                                followersList.appendChild(li);
+                            });
+                        }
+                    })
+                    .catch(err => {
+                        showToast('Failed to subscribe: ' + err.message);
+                        subscribeBtn.disabled = !followerUrlInput.value.trim();
+                    });
+            }
+
+            subscribeBtn.addEventListener('click', subscribeFollower);
+            followerUrlInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && followerUrlInput.value.trim()) subscribeFollower();
+            });
 
             // Initial queue load removed in favor of SSE StreamQueue
 

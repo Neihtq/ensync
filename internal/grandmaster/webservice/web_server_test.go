@@ -23,7 +23,7 @@ func TestNewWebServer(t *testing.T) {
 	trackQueue := queue.NewTrackQueue()
 	port := ":9999"
 
-	server := NewWebServer(port, provider, registry, trackQueue)
+	server := NewWebServer(port, "", provider, registry, trackQueue)
 	if server.Port != port {
 		t.Errorf("Expected port %s, got %s", port, server.Port)
 	}
@@ -39,7 +39,7 @@ func TestGetSongs(t *testing.T) {
 	provider := &sourceprovider.MockSourceProvider{}
 	registry := follower.NewFollowersRegistry()
 	trackQueue := queue.NewTrackQueue()
-	server := NewWebServer(":9999", provider, registry, trackQueue)
+	server := NewWebServer(":9999", "", provider, registry, trackQueue)
 
 	req := httptest.NewRequest(http.MethodGet, "/songs", nil)
 	rr := httptest.NewRecorder()
@@ -75,7 +75,7 @@ func TestGetSongs_WithSearch(t *testing.T) {
 	provider := &sourceprovider.MockSourceProvider{}
 	registry := follower.NewFollowersRegistry()
 	trackQueue := queue.NewTrackQueue()
-	server := NewWebServer(":9999", provider, registry, trackQueue)
+	server := NewWebServer(":9999", "", provider, registry, trackQueue)
 
 	req := httptest.NewRequest(http.MethodGet, "/songs?query=oasis", nil)
 	rr := httptest.NewRecorder()
@@ -116,7 +116,7 @@ func TestListFollowers(t *testing.T) {
 	registry.RegisterFollower("192.168.1.10", "8000")
 	registry.RegisterFollower("192.168.1.11", "8000")
 
-	server := NewWebServer(":9999", provider, registry, trackQueue)
+	server := NewWebServer(":9999", "", provider, registry, trackQueue)
 
 	req := httptest.NewRequest(http.MethodGet, "/followers", nil)
 	rr := httptest.NewRecorder()
@@ -168,7 +168,7 @@ func TestPushTrack_ValidJSON(t *testing.T) {
 	provider := &sourceprovider.MockSourceProvider{}
 	registry := follower.NewFollowersRegistry()
 	trackQueue := queue.NewTrackQueue()
-	server := NewWebServer(":9999", provider, registry, trackQueue)
+	server := NewWebServer(":9999", "", provider, registry, trackQueue)
 
 	jsonStr := []byte(`{"trackId":"test-track.mp3"}`)
 	req := httptest.NewRequest(http.MethodPost, "/tracks", bytes.NewBuffer(jsonStr))
@@ -195,7 +195,7 @@ func TestPushTrack_InvalidJSON(t *testing.T) {
 	provider := &sourceprovider.MockSourceProvider{}
 	registry := follower.NewFollowersRegistry()
 	trackQueue := queue.NewTrackQueue()
-	server := NewWebServer(":9999", provider, registry, trackQueue)
+	server := NewWebServer(":9999", "", provider, registry, trackQueue)
 
 	jsonStr := []byte(`{invalid-json}`) // Malformed JSON
 	req := httptest.NewRequest(http.MethodPost, "/tracks", bytes.NewBuffer(jsonStr))
@@ -219,7 +219,7 @@ func TestStartServer(t *testing.T) {
 	registry := follower.NewFollowersRegistry()
 	trackQueue := queue.NewTrackQueue()
 	// Assigning :0 lets the OS pick a random available port preventing address in use errors in tests
-	server := NewWebServer(":0", provider, registry, trackQueue)
+	server := NewWebServer(":0", "", provider, registry, trackQueue)
 
 	go func() {
 		server.StartServer()
@@ -233,7 +233,7 @@ func TestBroadcastQueueState_SendsToConnections(t *testing.T) {
 	provider := &sourceprovider.MockSourceProvider{}
 	registry := follower.NewFollowersRegistry()
 	trackQueue := queue.NewTrackQueue()
-	server := NewWebServer(":0", provider, registry, trackQueue)
+	server := NewWebServer(":0", "", provider, registry, trackQueue)
 
 	// Simulate a connected SSE client
 	ch := make(chan QueueState, 1)
@@ -260,7 +260,7 @@ func TestBroadcastQueueState_SkipsFullChannels(t *testing.T) {
 	provider := &sourceprovider.MockSourceProvider{}
 	registry := follower.NewFollowersRegistry()
 	trackQueue := queue.NewTrackQueue()
-	server := NewWebServer(":0", provider, registry, trackQueue)
+	server := NewWebServer(":0", "", provider, registry, trackQueue)
 
 	// Simulate a slow client with a full channel
 	ch := make(chan QueueState, 1)
@@ -284,7 +284,7 @@ func TestBroadcastQueueState_EmptyQueueItems(t *testing.T) {
 	provider := &sourceprovider.MockSourceProvider{}
 	registry := follower.NewFollowersRegistry()
 	trackQueue := queue.NewTrackQueue()
-	server := NewWebServer(":0", provider, registry, trackQueue)
+	server := NewWebServer(":0", "", provider, registry, trackQueue)
 
 	ch := make(chan QueueState, 1)
 	server.mu.Lock()
@@ -306,7 +306,7 @@ func TestStreamQueue_ConnectAndReceive(t *testing.T) {
 	provider := &sourceprovider.MockSourceProvider{}
 	registry := follower.NewFollowersRegistry()
 	trackQueue := queue.NewTrackQueue()
-	server := NewWebServer(":0", provider, registry, trackQueue)
+	server := NewWebServer(":0", "", provider, registry, trackQueue)
 
 	req := httptest.NewRequest(http.MethodGet, "/queue", nil)
 	rr := httptest.NewRecorder()
@@ -342,7 +342,7 @@ func TestStreamQueue_DisconnectRemovesChannel(t *testing.T) {
 	provider := &sourceprovider.MockSourceProvider{}
 	registry := follower.NewFollowersRegistry()
 	trackQueue := queue.NewTrackQueue()
-	server := NewWebServer(":0", provider, registry, trackQueue)
+	server := NewWebServer(":0", "", provider, registry, trackQueue)
 
 	req := httptest.NewRequest(http.MethodGet, "/queue", nil)
 	rr := httptest.NewRecorder()
