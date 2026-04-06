@@ -2,11 +2,12 @@ package sourceprovider
 
 import (
 	"encoding/json"
-	"ensync/internal/grandmaster/navidrome"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
+
+	"ensync/internal/grandmaster/navidrome"
 )
 
 func TestNavidromeProvider_PingSuccess(t *testing.T) {
@@ -32,11 +33,11 @@ func TestNavidromeProvider_PingSuccess(t *testing.T) {
 	// We don't call NewNaviDromeProvider directly because it starts a goroutine that can panic/leak
 	client := navidrome.NewNavidromeClient()
 	provider := &NaviDromeProvider{
-		NaviDromeClient: client,
+		Client: client,
 	}
 
 	// Just test one ping
-	err := provider.NaviDromeClient.Ping()
+	err := provider.Client.Ping()
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -67,26 +68,21 @@ func TestNavidromeProvider_HealthCheckIntegration(t *testing.T) {
 	// Create provider
 	client := navidrome.NewNavidromeClient()
 	provider := &NaviDromeProvider{
-		NaviDromeClient: client,
+		Client: client,
 	}
 
 	// Just verify the client works via the provider
-	if err := provider.NaviDromeClient.Ping(); err != nil {
+	if err := provider.Client.Ping(); err != nil {
 		t.Errorf("Ping failed: %v", err)
 	}
 }
 
 func TestNavidromeProvider_EmptyMethods(t *testing.T) {
 	provider := &NaviDromeProvider{}
-	
+
 	songs := provider.ListSongs()
 	if len(songs) != 0 {
 		t.Errorf("expected 0 songs, got %d", len(songs))
-	}
-
-	decoder, err := provider.GetSource("some-id")
-	if decoder != nil || err != nil {
-		t.Errorf("expected nil decoder and nil error for now, got %v, %v", decoder, err)
 	}
 }
 
@@ -115,7 +111,7 @@ func TestNavidromeProvider_SearchSong(t *testing.T) {
 
 	client := navidrome.NewNavidromeClient()
 	provider := &NaviDromeProvider{
-		NaviDromeClient: client,
+		Client: client,
 	}
 
 	songs := provider.SearchSong("oasis")

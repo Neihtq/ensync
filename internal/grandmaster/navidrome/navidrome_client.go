@@ -6,6 +6,8 @@ import (
 	"crypto/md5"
 	"crypto/rand"
 	"encoding/hex"
+	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -81,4 +83,22 @@ func (client *NavidromeClient) Search(query string) (*SearchResult3, error) {
 		return nil, err
 	}
 	return result.SubsonicResponse.SearchResult3, nil
+}
+
+func (client *NavidromeClient) GetStream(songID string) (io.ReadCloser, string, error) {
+	params := url.Values{}
+	params.Set("id", songID)
+
+	URL := client.buildURL("stream", params)
+	resp, err := client.HttpClient.Get(URL)
+	if err != nil {
+		return nil, "", err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		resp.Body.Close()
+		return nil, "", fmt.Errorf("server returned error: %s", resp.Status)
+	}
+
+	return resp.Body, resp.Header.Get("Content-Type"), nil
 }

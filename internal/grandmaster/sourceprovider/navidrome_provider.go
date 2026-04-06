@@ -5,16 +5,20 @@ import (
 	"time"
 
 	"ensync/internal/grandmaster/navidrome"
+
+	"github.com/gopxl/beep/v2"
+	"github.com/gopxl/beep/v2/flac"
+	"github.com/gopxl/beep/v2/mp3"
 )
 
 type NaviDromeProvider struct {
-	NaviDromeClient *navidrome.NavidromeClient
+	Client *navidrome.NavidromeClient
 }
 
 func NewNaviDromeProvider() *NaviDromeProvider {
 	client := navidrome.NewNavidromeClient()
 	provider := &NaviDromeProvider{
-		NaviDromeClient: client,
+		Client: client,
 	}
 	go provider.checkHealth()
 
@@ -22,7 +26,34 @@ func NewNaviDromeProvider() *NaviDromeProvider {
 }
 
 func (provider *NaviDromeProvider) GetSource(trackIdentifier string) (*Decoder, error) {
-	return nil, nil
+	stream, contentType, err := provider.Client.GetStream(trackIdentifier)
+	if err != nil {
+		return nil, fmt.Errorf("Error fetching stream %w", err)
+	}
+
+	var streamer beep.StreamSeekCloser
+	var format beep.Format
+	switch contentType {
+	case "audio/flac", "applicatoin/x-flac":
+		streamer, format, err = flac.Decode(stream)
+	default:
+		streamer, format, err = mp3.Decode(stream)
+	}
+
+	if err != nil {
+		stream.Close()
+		return nil, fmt.Errorf("decode error for %s %w", contentType, err)
+	}
+
+	decoder := &Decoder{
+		Streamer:   streamer,
+		Closer:     stream,
+		SampleRate: sampleRate,
+		Channels:   2,
+	}
+
+	Resample(format, streamer, decoder)
+	return decoder, nil
 }
 
 func (provider *NaviDromeProvider) ListSongs() []string {
@@ -30,7 +61,7 @@ func (provider *NaviDromeProvider) ListSongs() []string {
 }
 
 func (provider *NaviDromeProvider) SearchSong(query string) []navidrome.Song {
-	searchResult, err := provider.NaviDromeClient.Search(query)
+	searchResult, err := provider.Client.Search(query)
 	if err != nil {
 		fmt.Println("Error calling /search3", err)
 		return []navidrome.Song{}
@@ -47,7 +78,7 @@ func (provider *NaviDromeProvider) checkHealth() {
 	errCount := 0
 	maxAttempts := 10
 	for errCount < maxAttempts {
-		if err := provider.NaviDromeClient.Ping(); err != nil {
+		if err := provider.Client.Ping(); err != nil {
 			fmt.Printf("Navidrome host is not reachable (attempt %d of %d): %v", errCount, maxAttempts, err)
 			errCount++
 		} else {

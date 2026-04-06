@@ -84,7 +84,7 @@ func main() {
 	go clockSyncService.ExposeNTP(stop)
 
 	provider := provideNavidromeProvider()
-	log("Initialized Source Provider: Navidrome connector " + provider.NaviDromeClient.ApiVersion)
+	log("Initialized Source Provider: Navidrome connector " + provider.Client.ApiVersion)
 	results := provider.SearchSong("tv off")
 	first := results[0]
 	fmt.Println("search results:", first.Title, first.ID, first.Album, first.Artist)
