@@ -10,7 +10,10 @@ import (
 	"strings"
 
 	"github.com/hajimehoshi/go-mp3"
+	resampling "github.com/tphakala/go-audio-resampler"
 )
+
+
 
 type Decoder struct {
 	io.Reader
@@ -51,10 +54,32 @@ func (provider *AudioProvider) GetSource(trackIdentifier string) (*Decoder, erro
 		return nil, fmt.Errorf("error creating mp3 decoder: %w", err)
 	}
 
+	// Lock the output to 48000Hz using an advanced polyphase FIR resampler!
+	var r resampling.Resampler
+	if decoder.SampleRate() != 48000 {
+		config := &resampling.Config{
+			InputRate:  float64(decoder.SampleRate()),
+			OutputRate: 48000,
+			Channels:   2,
+			Quality:    resampling.QualitySpec{Preset: resampling.QualityHigh},
+		}
+		r, err = resampling.New(config)
+		if err != nil {
+			audioSource.Close()
+			return nil, fmt.Errorf("error creating resampler: %w", err)
+		}
+	}
+
+	resampler := &ResamplingReader{
+		decoder:    decoder,
+		targetRate: 48000,
+		resampler:  r,
+	}
+
 	return &Decoder{
-		Reader:     decoder,
+		Reader:     resampler,
 		Closer:     audioSource,
-		SampleRate: int64(decoder.SampleRate()),
+		SampleRate: 48000,
 		Channels:   2,
 	}, nil
 }

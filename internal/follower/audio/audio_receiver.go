@@ -55,16 +55,11 @@ func expose(
 			clock.InitStartTime(absoluteStartTime)
 		}
 
-		if sampleRate > 0 {
-			if !playerInitDone {
-				audioStream.SetSampleRate(int(sampleRate))
-				_, player := NewPlayer(audioStream, int(sampleRate))
-				go checkPlayerError(player, 1*time.Second)
-				playerInitDone = true
-			} else if audioStream.GetSampleRate() != int(sampleRate) {
-				audioStream.SetSampleRate(int(sampleRate))
-				fmt.Printf("Warning: Track sample rate changed to %dHz (Oto bound at initialization)\n", sampleRate)
-			}
+		if sampleRate > 0 && !playerInitDone {
+			audioStream.SetSampleRate(int(sampleRate))
+			_, player := NewPlayer(audioStream, int(sampleRate))
+			go checkPlayerError(player, 1*time.Second)
+			playerInitDone = true
 		}
 
 		audioStream.WriteToBuffer(audio, playAt)
