@@ -127,6 +127,7 @@ func (server *WebServer) StreamNowPlaying(writer http.ResponseWriter, request *h
 	server.connections = append(server.connections, messageChan)
 	server.mu.Unlock()
 
+	server.BroadcastNewSong(server.TrackQueue.GetNowPlaying())
 	for {
 		select {
 		case <-request.Context().Done():

@@ -26,7 +26,8 @@ type AudioStreamer struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 
-	Followers         *follower.FollowersRegistry
+	Followers *follower.FollowersRegistry
+
 	TrackQueue        *queue.TrackQueue
 	StreamingInterval time.Duration
 	SourceProvider    sourceprovider.SourceProvider
@@ -68,6 +69,7 @@ func (streamer *AudioStreamer) SetCallbackHook(callback func(trackID string)) {
 
 func (streamer *AudioStreamer) StreamAudioToAll() {
 	trackID := streamer.TrackQueue.PopFront()
+	streamer.TrackQueue.SetNowPlaying(trackID)
 	logging.Log(logPrefix, "Stream "+trackID)
 	if streamer.OnTrackChanged != nil {
 		streamer.OnTrackChanged(trackID)

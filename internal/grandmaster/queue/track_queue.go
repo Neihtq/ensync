@@ -8,9 +8,10 @@ import (
 )
 
 type TrackQueue struct {
-	mu sync.Mutex
-
+	mu    sync.Mutex
 	queue *deque.Deque[string]
+
+	NowPlaying string
 }
 
 func NewTrackQueue() *TrackQueue {
@@ -54,4 +55,18 @@ func (tq *TrackQueue) GetAllItems() []string {
 	}
 
 	return playList
+}
+
+func (tq *TrackQueue) SetNowPlaying(trackID string) {
+	tq.mu.Lock()
+	defer tq.mu.Unlock()
+
+	tq.NowPlaying = trackID
+}
+
+func (tq *TrackQueue) GetNowPlaying() string {
+	tq.mu.Lock()
+	defer tq.mu.Unlock()
+
+	return tq.NowPlaying
 }
