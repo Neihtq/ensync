@@ -3,6 +3,7 @@ package sourceprovider
 import (
 	"io"
 	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -98,6 +99,37 @@ func TestAudioProvider_ListSongs(t *testing.T) {
 
 	if len(songs) != 2 {
 		t.Errorf("Expected 2 songs, got %d. Songs: %v", len(songs), songs)
+	}
+}
+
+func TestAudioProvider_SearchSong(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "test_audio_search")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	os.WriteFile(filepath.Join(tempDir, "oasis.mp3"), []byte("mock"), 0644)
+	os.WriteFile(filepath.Join(tempDir, "blur.mp3"), []byte("mock"), 0644)
+
+	provider := NewAudioProvider(tempDir)
+	results := provider.SearchSong("oasis")
+
+	if len(results) != 1 {
+		t.Fatalf("Expected 1 result for 'oasis', got %d", len(results))
+	}
+
+	if results[0].Title != "oasis.mp3" {
+		t.Errorf("Expected title 'oasis.mp3', got %s", results[0].Title)
+	}
+
+	// Test search without extension
+	results = provider.SearchSong("blur")
+	if len(results) != 1 {
+		t.Fatalf("Expected 1 result for 'blur', got %d", len(results))
+	}
+	if results[0].Title != "blur.mp3" {
+		t.Errorf("Expected title 'blur.mp3', got %s", results[0].Title)
 	}
 }
 

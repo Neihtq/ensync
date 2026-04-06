@@ -54,5 +54,15 @@ func (provider *AudioProvider) ListSongs() []string {
 }
 
 func (provider *AudioProvider) SearchSong(query string) []navidrome.Song {
-	return []navidrome.Song{}
+	files := provider.ListSongs()
+	var results []navidrome.Song
+	for _, f := range files {
+		if filepath.Base(f) == query || filepath.Base(f) == query+".mp3" {
+			results = append(results, navidrome.Song{
+				ID:    f,
+				Title: f,
+			})
+		}
+	}
+	return results
 }

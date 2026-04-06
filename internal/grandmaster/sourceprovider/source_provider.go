@@ -67,5 +67,10 @@ func (provider *MockSourceProvider) GetSource(filePath string) (*Decoder, error)
 }
 
 func (provider *MockSourceProvider) SearchSong(query string) []navidrome.Song {
+	if query == "oasis" {
+		return []navidrome.Song{
+			{ID: "oasis1", Title: "Wonderwall", Artist: "Oasis"},
+		}
+	}
 	return []navidrome.Song{}
 }

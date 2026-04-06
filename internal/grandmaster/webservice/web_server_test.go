@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"ensync/internal/grandmaster/follower"
+	"ensync/internal/grandmaster/navidrome"
 	"ensync/internal/grandmaster/queue"
 	"ensync/internal/grandmaster/sourceprovider"
 )
@@ -67,6 +68,43 @@ func TestGetSongs(t *testing.T) {
 
 	if len(songs) != 2 || songs[0] != "mock1" || songs[1] != "mock2" {
 		t.Errorf("Unexpected songs list: %v", songs)
+	}
+}
+
+func TestGetSongs_WithSearch(t *testing.T) {
+	provider := &sourceprovider.MockSourceProvider{}
+	registry := follower.NewFollowersRegistry()
+	trackQueue := queue.NewTrackQueue()
+	server := NewWebServer(":9999", provider, registry, trackQueue)
+
+	req := httptest.NewRequest(http.MethodGet, "/songs?query=oasis", nil)
+	rr := httptest.NewRecorder()
+
+	server.GetSongs(rr, req)
+
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusOK)
+	}
+
+	contentType := rr.Header().Get("Content-Type")
+	if contentType != "application/json" {
+		t.Errorf("Expected Content-Type application/json, got %s", contentType)
+	}
+
+	var response struct {
+		Songs []navidrome.Song `json:"songs"`
+	}
+	err := json.NewDecoder(rr.Body).Decode(&response)
+	if err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	if len(response.Songs) != 1 {
+		t.Fatalf("Expected 1 song in search result, got %d", len(response.Songs))
+	}
+
+	if response.Songs[0].Title != "Wonderwall" {
+		t.Errorf("Expected song title 'Wonderwall', got %s", response.Songs[0].Title)
 	}
 }
 
