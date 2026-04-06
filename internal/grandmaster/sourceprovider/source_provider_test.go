@@ -142,6 +142,22 @@ func TestMockSourceProvider_ListSongs(t *testing.T) {
 	}
 }
 
+func TestAudioProvider_GetTitle(t *testing.T) {
+	provider := &AudioProvider{}
+	trackID := "some_track.mp3"
+	if provider.GetTitle(trackID) != trackID {
+		t.Errorf("expected %s, got %s", trackID, provider.GetTitle(trackID))
+	}
+}
+
+func TestMockSourceProvider_GetTitle(t *testing.T) {
+	provider := &MockSourceProvider{}
+	trackID := "mock_track"
+	if provider.GetTitle(trackID) != trackID {
+		t.Errorf("expected %s, got %s", trackID, provider.GetTitle(trackID))
+	}
+}
+
 func TestFloatToInt16_Clamping(t *testing.T) {
 	if v := floatToInt16(0.0); v != 0 {
 		t.Errorf("expected 0, got %d", v)

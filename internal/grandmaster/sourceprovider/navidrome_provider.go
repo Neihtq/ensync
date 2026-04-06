@@ -91,3 +91,21 @@ func (provider *NaviDromeProvider) checkHealth() {
 	}
 	panic("Navidrome is offline!")
 }
+
+func (provider *NaviDromeProvider) GetSong(trackID string) (*navidrome.Song, error) {
+	song, err := provider.Client.GetSong(trackID)
+	if err != nil {
+		return nil, fmt.Errorf("Error fetching song %w", err)
+	}
+
+	return song, nil
+}
+
+func (provider *NaviDromeProvider) GetTitle(trackIdentifier string) string {
+	song, err := provider.GetSong(trackIdentifier)
+	if err != nil {
+		fmt.Println("Error getting song title", err)
+		return ""
+	}
+	return song.Title + " - " + song.Artist
+}

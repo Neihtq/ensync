@@ -66,3 +66,7 @@ func (provider *AudioProvider) SearchSong(query string) []navidrome.Song {
 	}
 	return results
 }
+
+func (provider *AudioProvider) GetTitle(trackIdentifier string) string {
+	return trackIdentifier
+}

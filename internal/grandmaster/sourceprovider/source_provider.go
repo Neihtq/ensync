@@ -23,6 +23,7 @@ type SourceProvider interface {
 	GetSource(trackIdentifier string) (*Decoder, error)
 	ListSongs() []string
 	SearchSong(query string) []navidrome.Song
+	GetTitle(trackIdentifier string) string
 }
 
 func (d *Decoder) Close() error {
@@ -73,4 +74,8 @@ func (provider *MockSourceProvider) SearchSong(query string) []navidrome.Song {
 		}
 	}
 	return []navidrome.Song{}
+}
+
+func (provider *MockSourceProvider) GetTitle(trackIdentifier string) string {
+	return trackIdentifier
 }

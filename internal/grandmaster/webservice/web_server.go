@@ -106,9 +106,19 @@ func (server *WebServer) BroadcastQueueState(nowPlaying string, queueItems []str
 	server.mu.Lock()
 	defer server.mu.Unlock()
 
+	items := []string{}
+	for _, trackID := range queueItems {
+		items = append(items, server.SourceProvider.GetTitle(trackID))
+	}
+
+	nowPlayingTitle := nowPlaying
+	if nowPlaying != "" {
+		nowPlayingTitle = server.SourceProvider.GetTitle(nowPlaying)
+	}
+
 	state := QueueState{
-		NowPlaying: nowPlaying,
-		QueueItems: queueItems,
+		NowPlaying: nowPlayingTitle,
+		QueueItems: items,
 	}
 
 	for _, ch := range server.connections {

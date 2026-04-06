@@ -10,6 +10,7 @@ type SubsonicResponse struct {
 	Error   *APIError `json:"error,omitempty"`
 
 	SearchResult3 *SearchResult3 `json:"searchResult3,omitempty"`
+	Song          *Song          `json:"song,omitempty"`
 }
 
 type APIError struct {

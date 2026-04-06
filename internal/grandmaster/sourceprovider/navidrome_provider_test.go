@@ -78,11 +78,91 @@ func TestNavidromeProvider_HealthCheckIntegration(t *testing.T) {
 }
 
 func TestNavidromeProvider_EmptyMethods(t *testing.T) {
-	provider := &NaviDromeProvider{}
+	os.Setenv("NAVIDROME_URL", "http://localhost")
+	os.Setenv("NAVIDROME_USER", "test")
+	os.Setenv("NAVIDROME_PASSWORD", "test")
+	defer os.Unsetenv("NAVIDROME_URL")
+	defer os.Unsetenv("NAVIDROME_USER")
+	defer os.Unsetenv("NAVIDROME_PASSWORD")
+
+	client := navidrome.NewNavidromeClient()
+	provider := &NaviDromeProvider{Client: client}
 
 	songs := provider.ListSongs()
 	if len(songs) != 0 {
 		t.Errorf("expected 0 songs, got %d", len(songs))
+	}
+}
+
+func TestNavidromeProvider_GetSong(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		resp := navidrome.ResponseWrapper{
+			SubsonicResponse: navidrome.SubsonicResponse{
+				Status: "ok",
+				Song: &navidrome.Song{
+					ID:     "song1",
+					Title:  "Song One",
+					Artist: "Artist One",
+				},
+			},
+		}
+		json.NewEncoder(w).Encode(resp)
+	}))
+	defer server.Close()
+
+	os.Setenv("NAVIDROME_URL", server.URL)
+	os.Setenv("NAVIDROME_USER", "test")
+	os.Setenv("NAVIDROME_PASSWORD", "test")
+	defer os.Unsetenv("NAVIDROME_URL")
+	defer os.Unsetenv("NAVIDROME_USER")
+	defer os.Unsetenv("NAVIDROME_PASSWORD")
+
+	client := navidrome.NewNavidromeClient()
+	provider := &NaviDromeProvider{
+		Client: client,
+	}
+
+	song, err := provider.GetSong("song1")
+	if err != nil {
+		t.Fatalf("GetSong failed: %v", err)
+	}
+	if song.Title != "Song One" {
+		t.Errorf("expected Song One, got %s", song.Title)
+	}
+}
+
+func TestNavidromeProvider_GetTitle(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		resp := navidrome.ResponseWrapper{
+			SubsonicResponse: navidrome.SubsonicResponse{
+				Status: "ok",
+				Song: &navidrome.Song{
+					ID:     "song1",
+					Title:  "Song One",
+					Artist: "Artist One",
+				},
+			},
+		}
+		json.NewEncoder(w).Encode(resp)
+	}))
+	defer server.Close()
+
+	os.Setenv("NAVIDROME_URL", server.URL)
+	os.Setenv("NAVIDROME_USER", "test")
+	os.Setenv("NAVIDROME_PASSWORD", "test")
+	defer os.Unsetenv("NAVIDROME_URL")
+	defer os.Unsetenv("NAVIDROME_USER")
+	defer os.Unsetenv("NAVIDROME_PASSWORD")
+
+	client := navidrome.NewNavidromeClient()
+	provider := &NaviDromeProvider{
+		Client: client,
+	}
+
+	title := provider.GetTitle("song1")
+	expected := "Song One - Artist One"
+	if title != expected {
+		t.Errorf("expected %s, got %s", expected, title)
 	}
 }
 

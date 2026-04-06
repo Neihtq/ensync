@@ -85,6 +85,17 @@ func (client *NavidromeClient) Search(query string) (*SearchResult3, error) {
 	return result.SubsonicResponse.SearchResult3, nil
 }
 
+func (client *NavidromeClient) GetSong(songID string) (*Song, error) {
+	params := url.Values{}
+	params.Set("id", songID)
+
+	result, err := client.callGet("getSong", params)
+	if err != nil {
+		return nil, err
+	}
+	return result.SubsonicResponse.Song, nil
+}
+
 func (client *NavidromeClient) GetStream(songID string) (io.ReadCloser, string, error) {
 	params := url.Values{}
 	params.Set("id", songID)

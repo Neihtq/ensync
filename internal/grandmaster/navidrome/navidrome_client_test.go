@@ -137,3 +137,69 @@ func TestNavidromeClient_Search(t *testing.T) {
 		t.Errorf("expected Wonderwall, got %s", result.Song[0].Title)
 	}
 }
+
+func TestNavidromeClient_GetSong(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		query := r.URL.Query()
+		if query.Get("id") != "song123" {
+			t.Errorf("expected id 'song123', got %s", query.Get("id"))
+		}
+
+		resp := ResponseWrapper{
+			SubsonicResponse: SubsonicResponse{
+				Status: "ok",
+				Song: &Song{
+					ID:     "song123",
+					Title:  "Live Forever",
+					Artist: "Oasis",
+				},
+			},
+		}
+		json.NewEncoder(w).Encode(resp)
+	}))
+	defer server.Close()
+
+	os.Setenv("NAVIDROME_URL", server.URL)
+	os.Setenv("NAVIDROME_USER", "test")
+	os.Setenv("NAVIDROME_PASSWORD", "test")
+	defer os.Unsetenv("NAVIDROME_URL")
+	defer os.Unsetenv("NAVIDROME_USER")
+	defer os.Unsetenv("NAVIDROME_PASSWORD")
+
+	client := NewNavidromeClient()
+	song, err := client.GetSong("song123")
+	if err != nil {
+		t.Fatalf("GetSong failed: %v", err)
+	}
+
+	if song.Title != "Live Forever" {
+		t.Errorf("expected Live Forever, got %s", song.Title)
+	}
+}
+
+func TestNavidromeClient_GetStream(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "audio/mpeg")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("fake audio data"))
+	}))
+	defer server.Close()
+
+	os.Setenv("NAVIDROME_URL", server.URL)
+	os.Setenv("NAVIDROME_USER", "test")
+	os.Setenv("NAVIDROME_PASSWORD", "test")
+	defer os.Unsetenv("NAVIDROME_URL")
+	defer os.Unsetenv("NAVIDROME_USER")
+	defer os.Unsetenv("NAVIDROME_PASSWORD")
+
+	client := NewNavidromeClient()
+	stream, contentType, err := client.GetStream("song123")
+	if err != nil {
+		t.Fatalf("GetStream failed: %v", err)
+	}
+	defer stream.Close()
+
+	if contentType != "audio/mpeg" {
+		t.Errorf("expected audio/mpeg, got %s", contentType)
+	}
+}

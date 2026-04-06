@@ -241,14 +241,14 @@ func TestBroadcastQueueState_SendsToConnections(t *testing.T) {
 	server.connections = append(server.connections, ch)
 	server.mu.Unlock()
 
-	server.BroadcastQueueState("song.mp3", []string{"next.mp3"})
+	server.BroadcastQueueState("mock1", []string{"mock2"})
 
 	select {
 	case state := <-ch:
-		if state.NowPlaying != "song.mp3" {
-			t.Errorf("expected NowPlaying 'song.mp3', got '%s'", state.NowPlaying)
+		if state.NowPlaying != "mock1" {
+			t.Errorf("expected NowPlaying 'mock1', got '%s'", state.NowPlaying)
 		}
-		if len(state.QueueItems) != 1 || state.QueueItems[0] != "next.mp3" {
+		if len(state.QueueItems) != 1 || state.QueueItems[0] != "mock2" {
 			t.Errorf("unexpected QueueItems: %v", state.QueueItems)
 		}
 	case <-time.After(100 * time.Millisecond):
@@ -271,7 +271,7 @@ func TestBroadcastQueueState_SkipsFullChannels(t *testing.T) {
 	server.mu.Unlock()
 
 	// Should not block even though the channel is full
-	server.BroadcastQueueState("new.mp3", []string{})
+	server.BroadcastQueueState("mock1", []string{})
 
 	// Channel should still have the old message (non-blocking send skipped)
 	state := <-ch
@@ -297,8 +297,8 @@ func TestBroadcastQueueState_EmptyQueueItems(t *testing.T) {
 	if state.NowPlaying != "" {
 		t.Errorf("expected empty NowPlaying, got '%s'", state.NowPlaying)
 	}
-	if state.QueueItems != nil {
-		t.Errorf("expected nil QueueItems, got %v", state.QueueItems)
+	if len(state.QueueItems) != 0 {
+		t.Errorf("expected empty QueueItems, got %v", state.QueueItems)
 	}
 }
 
