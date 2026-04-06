@@ -347,33 +347,7 @@
                     followersList.appendChild(li);
                 });
 
-            // Load queue
-            function loadQueue() {
-                fetch('/queue')
-                    .then(res => res.json())
-                    .then(data => {
-                        queueList.innerHTML = '';
-                        if (data && data.tracks && data.tracks.length > 0) {
-                            data.tracks.forEach(track => {
-                                const li = document.createElement('li');
-                                const p = document.createElement('p');
-                                p.style.margin = "0";
-                                p.textContent = track;
-                                li.appendChild(p);
-                                queueList.appendChild(li);
-                            });
-                        } else {
-                            const li = document.createElement('li');
-                            li.textContent = "Queue is currently empty.";
-                            queueList.appendChild(li);
-                        }
-                    })
-                    .catch(err => {
-                        console.error("Failed to load queue:", err);
-                        queueList.innerHTML = '<li>Error loading queue.</li>';
-                    });
-            }
-            loadQueue();
+            // Initial queue load removed in favor of SSE StreamQueue
 
             // Toast helper
             function showToast(message) {
@@ -398,7 +372,6 @@
                     .then(response => {
                         if (response.ok) {
                             showToast('Track successfully pushed to queue!');
-                            loadQueue();
                         } else {
                             showToast('Failed to push track (Error ' + response.status + ').');
                         }
@@ -408,21 +381,39 @@
                     });
             });
 
-            // SSE Listener for Now Playing Endpoint
+            // SSE Listener for Combined Queue and Now Playing
             const nowPlayingLabel = document.getElementById('now-playing-label');
-            const evtSource = new EventSource('/now-playing');
+            const evtSource = new EventSource('/queue');
             
             evtSource.onmessage = function(event) {
                 const data = JSON.parse(event.data);
+                
+                // Update Now Playing
                 nowPlayingLabel.textContent = data.nowPlaying || 'Idle';
                 
-                // Track advanced, refresh the queue UI automatically!
-                loadQueue();
+                // Update Queue List
+                queueList.innerHTML = '';
+                if (data && data.queueItems && data.queueItems.length > 0) {
+                    data.tracks = data.queueItems; // Compatibility if needed
+                    data.queueItems.forEach(track => {
+                        const li = document.createElement('li');
+                        const p = document.createElement('p');
+                        p.style.margin = "0";
+                        p.textContent = track;
+                        li.appendChild(p);
+                        queueList.appendChild(li);
+                    });
+                } else {
+                    const li = document.createElement('li');
+                    li.textContent = "Queue is currently empty.";
+                    queueList.appendChild(li);
+                }
             };
             
             evtSource.onerror = function(err) {
                 console.error("EventSource connection lost", err);
                 nowPlayingLabel.textContent = 'Disconnected...';
+                queueList.innerHTML = '<li>Connection lost...</li>';
             };
 
         });

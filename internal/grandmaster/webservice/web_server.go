@@ -16,9 +16,14 @@ type PushTrackRequest struct {
 	TrackIdentifier string `json:"trackId"`
 }
 
+type QueueState struct {
+	NowPlaying string   `json:"nowPlaying"`
+	QueueItems []string `json:"queueItems"`
+}
+
 type WebServer struct {
 	mu                sync.Mutex
-	connections       []chan string
+	connections       []chan QueueState
 	Port              string
 	SourceProvider    sourceprovider.SourceProvider
 	FollowersRegistry *follower.FollowersRegistry
@@ -47,8 +52,7 @@ func (server *WebServer) StartServer() {
 	mux.HandleFunc("GET /songs", server.ListSongs)
 	mux.HandleFunc("GET /followers", server.ListFollowers)
 	mux.HandleFunc("POST /tracks", server.PushTrack)
-	mux.HandleFunc("GET /queue", server.GetQueue)
-	mux.HandleFunc("GET /now-playing", server.StreamNowPlaying)
+	mux.HandleFunc("GET /queue", server.StreamQueue)
 
 	fmt.Println("Webserver running on port", server.Port)
 	http.ListenAndServe(server.Port, mux)
@@ -88,29 +92,24 @@ func (server *WebServer) PushTrack(writer http.ResponseWriter, request *http.Req
 	writer.WriteHeader(http.StatusCreated)
 }
 
-func (server *WebServer) GetQueue(writer http.ResponseWriter, _ *http.Request) {
-	writer.Header().Set("Content-Type", "application/json")
-	queue := server.TrackQueue.GetAllItems()
-
-	response := map[string][]string{
-		"tracks": queue,
-	}
-	json.NewEncoder(writer).Encode(response)
-}
-
-func (server *WebServer) BroadcastNewSong(trackName string) {
+func (server *WebServer) BroadcastQueueState(nowPlaying string, queueItems []string) {
 	server.mu.Lock()
 	defer server.mu.Unlock()
 
+	state := QueueState{
+		NowPlaying: nowPlaying,
+		QueueItems: queueItems,
+	}
+
 	for _, ch := range server.connections {
 		select {
-		case ch <- trackName:
+		case ch <- state:
 		default:
 		}
 	}
 }
 
-func (server *WebServer) StreamNowPlaying(writer http.ResponseWriter, request *http.Request) {
+func (server *WebServer) StreamQueue(writer http.ResponseWriter, request *http.Request) {
 	writer.Header().Set("Content-Type", "text/event-stream")
 	writer.Header().Set("Cache-Control", "no-cache")
 	writer.Header().Set("Connection", "keep-alive")
@@ -121,20 +120,32 @@ func (server *WebServer) StreamNowPlaying(writer http.ResponseWriter, request *h
 		return
 	}
 
-	messageChan := make(chan string, 1)
+	messageChan := make(chan QueueState, 1)
 
 	server.mu.Lock()
 	server.connections = append(server.connections, messageChan)
 	server.mu.Unlock()
 
-	server.BroadcastNewSong(server.TrackQueue.GetNowPlaying())
+	server.TrackQueue.CallHook()
 	for {
 		select {
 		case <-request.Context().Done():
 			fmt.Println("Client disconnected")
+			server.mu.Lock()
+			for i, ch := range server.connections {
+				if ch == messageChan {
+					server.connections = append(server.connections[:i], server.connections[i+1:]...)
+					break
+				}
+			}
+			server.mu.Unlock()
 			return
-		case newSong := <-messageChan:
-			payload, _ := json.Marshal(map[string]string{"nowPlaying": newSong})
+		case queueState := <-messageChan:
+			payload, err := json.Marshal(queueState)
+			if err != nil {
+				fmt.Println("Error marshalling JSON:", err)
+				continue
+			}
 			fmt.Fprintf(writer, "data: %s\n\n", payload)
 			flusher.Flush()
 		}

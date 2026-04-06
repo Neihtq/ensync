@@ -34,7 +34,6 @@ type AudioStreamer struct {
 	MediaClock        clock.MediaClock
 	LookAhead         int64
 	SleepInterval     time.Duration
-	OnTrackChanged    func(trackID string)
 }
 
 func NewAudioStreamer(
@@ -63,17 +62,10 @@ func (streamer *AudioStreamer) AddToQueue(filePath string) {
 	streamer.TrackQueue.PushBack(filePath)
 }
 
-func (streamer *AudioStreamer) SetCallbackHook(callback func(trackID string)) {
-	streamer.OnTrackChanged = callback
-}
-
 func (streamer *AudioStreamer) StreamAudioToAll(stop chan struct{}) {
 	trackID := streamer.TrackQueue.PopFront()
 	streamer.TrackQueue.SetNowPlaying(trackID)
 	logging.Log(logPrefix, "Stream "+trackID)
-	if streamer.OnTrackChanged != nil {
-		streamer.OnTrackChanged(trackID)
-	}
 
 	audioSource, err := streamer.SourceProvider.GetSource(trackID)
 	if err != nil {
@@ -91,6 +83,7 @@ func (streamer *AudioStreamer) StreamAudioToAll(stop chan struct{}) {
 		select {
 		case <-stop:
 			logging.Log(logPrefix, "Cancelling song.")
+			streamer.TrackQueue.SetNowPlaying("")
 			return
 		default:
 			streamer.MediaClock.UpdateMediaTime()
@@ -102,6 +95,7 @@ func (streamer *AudioStreamer) StreamAudioToAll(stop chan struct{}) {
 			dataSize, err := audioSource.Read(buffer)
 			if dataSize == 0 || err != nil {
 				logging.Log(logPrefix, "Exiting play loop: n="+strconv.Itoa(dataSize)+" err="+err.Error())
+				streamer.TrackQueue.SetNowPlaying("")
 				return
 			}
 

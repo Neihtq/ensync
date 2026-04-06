@@ -11,7 +11,8 @@ type TrackQueue struct {
 	mu    sync.Mutex
 	queue *deque.Deque[string]
 
-	NowPlaying string
+	NowPlaying     string
+	OnQueueChanged func(nowPlaying string, queueItems []string)
 }
 
 func NewTrackQueue() *TrackQueue {
@@ -20,14 +21,19 @@ func NewTrackQueue() *TrackQueue {
 
 func (tq *TrackQueue) PushBack(item string) {
 	tq.mu.Lock()
-	defer tq.mu.Unlock()
 	tq.queue.PushBack(item)
+	tq.mu.Unlock()
+
+	tq.CallHook()
 }
 
 func (tq *TrackQueue) PopFront() string {
 	tq.mu.Lock()
-	defer tq.mu.Unlock()
-	return tq.queue.PopFront()
+	track := tq.queue.PopFront()
+	tq.mu.Unlock()
+
+	tq.CallHook()
+	return track
 }
 
 func (tq *TrackQueue) Len() int {
@@ -59,9 +65,10 @@ func (tq *TrackQueue) GetAllItems() []string {
 
 func (tq *TrackQueue) SetNowPlaying(trackID string) {
 	tq.mu.Lock()
-	defer tq.mu.Unlock()
-
 	tq.NowPlaying = trackID
+	tq.mu.Unlock()
+
+	tq.CallHook()
 }
 
 func (tq *TrackQueue) GetNowPlaying() string {
@@ -69,4 +76,18 @@ func (tq *TrackQueue) GetNowPlaying() string {
 	defer tq.mu.Unlock()
 
 	return tq.NowPlaying
+}
+
+func (tq *TrackQueue) SetCallbackHook(
+	onQueueChanged func(nowPlaying string, queueItems []string),
+) {
+	tq.OnQueueChanged = onQueueChanged
+}
+
+func (tq *TrackQueue) CallHook() {
+	if tq.OnQueueChanged != nil {
+		nowPlaying := tq.GetNowPlaying()
+		queueItems := tq.GetAllItems()
+		tq.OnQueueChanged(nowPlaying, queueItems)
+	}
 }
