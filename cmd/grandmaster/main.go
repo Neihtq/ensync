@@ -90,6 +90,7 @@ func main() {
 
 	log("Start Web Server")
 	webServer := provideWebserver(sourceProvider, followersRegistry, trackQueue)
+	audioStreamer.SetCallbackHook(webServer.BroadcastNewSong)
 	go webServer.StartServer()
 
 	<-sigChan

@@ -239,11 +239,19 @@
 
             <!-- Right Column: Sidebar Followers -->
             <div class="right-column">
+
                 <div class="box">
                     <div class="box-header">Connected Followers</div>
                     <!-- padding:0 to make list items flush like a standard forum sidebar -->
-                    <div class="box-content" style="padding: 0;">
+                    <div class="box-content" style="padding: 0; max-height: 200px; overflow-y: auto;">
                         <ul id="followers-list" class="sidebar-list"></ul>
+                    </div>
+                </div>
+
+                <div class="box">
+                    <div class="box-header">Current Queue</div>
+                    <div class="box-content" style="padding: 0; max-height: 200px; overflow-y: auto;">
+                        <ul id="queue-list" class="sidebar-list"></ul>
                     </div>
                 </div>
             </div>
@@ -273,6 +281,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             const songsList = document.getElementById('songs-list');
             const followersList = document.getElementById('followers-list');
+            const queueList = document.getElementById('queue-list');
             const pushBtn = document.getElementById('push-btn');
             const notification = document.getElementById('notification');
             const notifMsg = document.getElementById('notif-msg');
@@ -321,6 +330,34 @@
                     followersList.appendChild(li);
                 });
 
+            // Load queue
+            function loadQueue() {
+                fetch('/queue')
+                    .then(res => res.json())
+                    .then(data => {
+                        queueList.innerHTML = '';
+                        if (data && data.tracks && data.tracks.length > 0) {
+                            data.tracks.forEach(track => {
+                                const li = document.createElement('li');
+                                const p = document.createElement('p');
+                                p.style.margin = "0";
+                                p.textContent = track;
+                                li.appendChild(p);
+                                queueList.appendChild(li);
+                            });
+                        } else {
+                            const li = document.createElement('li');
+                            li.textContent = "Queue is currently empty.";
+                            queueList.appendChild(li);
+                        }
+                    })
+                    .catch(err => {
+                        console.error("Failed to load queue:", err);
+                        queueList.innerHTML = '<li>Error loading queue.</li>';
+                    });
+            }
+            loadQueue();
+
             // Enable button when song selected
             songsList.addEventListener('change', () => {
                 if (songsList.selectedIndex !== -1) {
@@ -344,6 +381,7 @@
                         if (response.ok) {
                             notifMsg.textContent = 'Track successfully pushed to queue!';
                             notifTitle.textContent = 'Action Successful';
+                            loadQueue();
                         } else {
                             notifMsg.textContent = 'Failed to push track (Error ' + response.status + ').';
                             notifTitle.textContent = 'Action Failed';

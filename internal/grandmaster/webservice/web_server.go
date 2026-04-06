@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sync"
 
 	"ensync/internal/grandmaster/follower"
 	"ensync/internal/grandmaster/queue"
@@ -16,6 +17,8 @@ type PushTrackRequest struct {
 }
 
 type WebServer struct {
+	mu                sync.Mutex
+	connections       []chan string
 	Port              string
 	SourceProvider    sourceprovider.SourceProvider
 	FollowersRegistry *follower.FollowersRegistry
@@ -45,6 +48,7 @@ func (server *WebServer) StartServer() {
 	mux.HandleFunc("GET /followers", server.ListFollowers)
 	mux.HandleFunc("POST /tracks", server.PushTrack)
 	mux.HandleFunc("GET /queue", server.GetQueue)
+	mux.HandleFunc("GET /now-playing", server.StreamNowPlaying)
 
 	fmt.Println("Webserver running on port", server.Port)
 	http.ListenAndServe(server.Port, mux)
@@ -92,4 +96,46 @@ func (server *WebServer) GetQueue(writer http.ResponseWriter, _ *http.Request) {
 		"tracks": queue,
 	}
 	json.NewEncoder(writer).Encode(response)
+}
+
+func (server *WebServer) BroadcastNewSong(trackName string) {
+	server.mu.Lock()
+	defer server.mu.Unlock()
+
+	for _, ch := range server.connections {
+		select {
+		case ch <- trackName:
+		default:
+		}
+	}
+}
+
+func (server *WebServer) StreamNowPlaying(writer http.ResponseWriter, request *http.Request) {
+	writer.Header().Set("Content-Type", "text/event-stream")
+	writer.Header().Set("Cache-Control", "no-cache")
+	writer.Header().Set("Connection", "keep-alive")
+
+	flusher, ok := writer.(http.Flusher)
+	if !ok {
+		http.Error(writer, "Streaming not supported!", http.StatusInternalServerError)
+		return
+	}
+
+	messageChan := make(chan string, 1)
+
+	server.mu.Lock()
+	server.connections = append(server.connections, messageChan)
+	server.mu.Unlock()
+
+	for {
+		select {
+		case <-request.Context().Done():
+			fmt.Println("Client disconnected")
+			return
+		case newSong := <-messageChan:
+			payload, _ := json.Marshal(map[string]string{"nowPlaying": newSong})
+			fmt.Fprintf(writer, "data: %s\n\n", payload)
+			flusher.Flush()
+		}
+	}
 }

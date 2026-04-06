@@ -33,6 +33,7 @@ type AudioStreamer struct {
 	MediaClock        clock.MediaClock
 	LookAhead         int64
 	SleepInterval     time.Duration
+	OnTrackChanged    func(trackID string)
 }
 
 func NewAudioStreamer(
@@ -61,11 +62,24 @@ func (streamer *AudioStreamer) AddToQueue(filePath string) {
 	streamer.TrackQueue.PushBack(filePath)
 }
 
+func (streamer *AudioStreamer) SetCallbackHook(callback func(trackID string)) {
+	streamer.OnTrackChanged = callback
+}
+
 func (streamer *AudioStreamer) StreamAudioToAll() {
 	trackID := streamer.TrackQueue.PopFront()
 	logging.Log(logPrefix, "Stream "+trackID)
+	if streamer.OnTrackChanged != nil {
+		streamer.OnTrackChanged(trackID)
+	}
 
-	audioSource := streamer.SourceProvider.GetSource(trackID)
+	audioSource, err := streamer.SourceProvider.GetSource(trackID)
+	if err != nil {
+		logging.Log(logPrefix, "Error preparing track: "+err.Error())
+		return
+	}
+	defer audioSource.Close()
+
 	ticker := time.NewTicker(streamer.StreamingInterval)
 	defer ticker.Stop()
 
