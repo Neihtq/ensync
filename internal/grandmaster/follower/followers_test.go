@@ -49,3 +49,84 @@ func TestSubscribeFollower(t *testing.T) {
 		t.Errorf("Expected registered follower AudioURL %s but was %s", expected, registered.AudioURL)
 	}
 }
+
+func TestNewFollower(t *testing.T) {
+	f := NewFollower("192.168.1.5:8080")
+	if f.AudioURL != "192.168.1.5:8080" {
+		t.Errorf("expected AudioURL '192.168.1.5:8080', got '%s'", f.AudioURL)
+	}
+	if f.Conn != nil {
+		t.Errorf("expected Conn to be nil initially")
+	}
+}
+
+func TestFollower_GetConnection_Nil(t *testing.T) {
+	f := NewFollower("192.168.1.5:8080")
+	conn := f.GetConnection()
+	if conn != nil {
+		t.Errorf("expected nil connection before InitConnection")
+	}
+}
+
+func TestNewFollowersRegistry(t *testing.T) {
+	registry := NewFollowersRegistry()
+	if registry == nil {
+		t.Fatal("expected non-nil registry")
+	}
+	if len(registry.Registry) != 0 {
+		t.Errorf("expected empty registry, got %d entries", len(registry.Registry))
+	}
+}
+
+func TestFollowersRegistry_RegisterFollower_Duplicate(t *testing.T) {
+	registry := NewFollowersRegistry()
+	registry.RegisterFollower("192.168.1.10", "8000")
+	registry.RegisterFollower("192.168.1.10", "9000") // same IP, different port
+
+	if len(registry.Registry) != 1 {
+		t.Errorf("expected 1 follower (deduplicated by IP), got %d", len(registry.Registry))
+	}
+
+	// Should keep the first registration
+	f := registry.Registry["192.168.1.10"]
+	if f.AudioURL != "192.168.1.10:8000" {
+		t.Errorf("expected first registration to persist, got AudioURL '%s'", f.AudioURL)
+	}
+}
+
+func TestFollowersRegistry_GetAllFollowers(t *testing.T) {
+	registry := NewFollowersRegistry()
+
+	followers := registry.GetAllFollowers()
+	if len(followers) != 0 {
+		t.Errorf("expected 0 followers, got %d", len(followers))
+	}
+
+	registry.RegisterFollower("10.0.0.1", "8080")
+	registry.RegisterFollower("10.0.0.2", "8080")
+
+	followers = registry.GetAllFollowers()
+	if len(followers) != 2 {
+		t.Errorf("expected 2 followers, got %d", len(followers))
+	}
+}
+
+func TestFollower_InitConnection(t *testing.T) {
+	// Use a local address for testing
+	f := NewFollower("127.0.0.1:9999") 
+	
+	f.InitConnection()
+	
+	conn := f.GetConnection()
+	if conn == nil {
+		t.Fatal("expected connection to be initialized")
+	}
+	defer conn.Close()
+
+	// Initializing again should not change anything or panic
+	oldConn := conn
+	f.InitConnection()
+	if f.GetConnection() != oldConn {
+		t.Error("expected second InitConnection to be a no-op")
+	}
+}

@@ -2,9 +2,12 @@ package webservice
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -40,7 +43,7 @@ func TestListSongs(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/songs", nil)
 	rr := httptest.NewRecorder()
 
-	server.listSongs(rr, req)
+	server.ListSongs(rr, req)
 
 	if status := rr.Code; status != http.StatusOK {
 		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusOK)
@@ -80,7 +83,7 @@ func TestListFollowers(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/followers", nil)
 	rr := httptest.NewRecorder()
 
-	server.listFollowers(rr, req)
+	server.ListFollowers(rr, req)
 
 	if status := rr.Code; status != http.StatusOK {
 		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusOK)
@@ -186,4 +189,154 @@ func TestStartServer(t *testing.T) {
 
 	// Wait briefly to ensure it spins up without crashing
 	time.Sleep(100 * time.Millisecond)
+}
+
+func TestBroadcastQueueState_SendsToConnections(t *testing.T) {
+	provider := &sourceprovider.MockSourceProvider{}
+	registry := follower.NewFollowersRegistry()
+	trackQueue := queue.NewTrackQueue()
+	server := NewWebServer(":0", provider, registry, trackQueue)
+
+	// Simulate a connected SSE client
+	ch := make(chan QueueState, 1)
+	server.mu.Lock()
+	server.connections = append(server.connections, ch)
+	server.mu.Unlock()
+
+	server.BroadcastQueueState("song.mp3", []string{"next.mp3"})
+
+	select {
+	case state := <-ch:
+		if state.NowPlaying != "song.mp3" {
+			t.Errorf("expected NowPlaying 'song.mp3', got '%s'", state.NowPlaying)
+		}
+		if len(state.QueueItems) != 1 || state.QueueItems[0] != "next.mp3" {
+			t.Errorf("unexpected QueueItems: %v", state.QueueItems)
+		}
+	case <-time.After(100 * time.Millisecond):
+		t.Fatal("timed out waiting for broadcast")
+	}
+}
+
+func TestBroadcastQueueState_SkipsFullChannels(t *testing.T) {
+	provider := &sourceprovider.MockSourceProvider{}
+	registry := follower.NewFollowersRegistry()
+	trackQueue := queue.NewTrackQueue()
+	server := NewWebServer(":0", provider, registry, trackQueue)
+
+	// Simulate a slow client with a full channel
+	ch := make(chan QueueState, 1)
+	ch <- QueueState{NowPlaying: "stale"} // fill the buffer
+
+	server.mu.Lock()
+	server.connections = append(server.connections, ch)
+	server.mu.Unlock()
+
+	// Should not block even though the channel is full
+	server.BroadcastQueueState("new.mp3", []string{})
+
+	// Channel should still have the old message (non-blocking send skipped)
+	state := <-ch
+	if state.NowPlaying != "stale" {
+		t.Errorf("expected stale message, got '%s'", state.NowPlaying)
+	}
+}
+
+func TestBroadcastQueueState_EmptyQueueItems(t *testing.T) {
+	provider := &sourceprovider.MockSourceProvider{}
+	registry := follower.NewFollowersRegistry()
+	trackQueue := queue.NewTrackQueue()
+	server := NewWebServer(":0", provider, registry, trackQueue)
+
+	ch := make(chan QueueState, 1)
+	server.mu.Lock()
+	server.connections = append(server.connections, ch)
+	server.mu.Unlock()
+
+	server.BroadcastQueueState("", nil)
+
+	state := <-ch
+	if state.NowPlaying != "" {
+		t.Errorf("expected empty NowPlaying, got '%s'", state.NowPlaying)
+	}
+	if state.QueueItems != nil {
+		t.Errorf("expected nil QueueItems, got %v", state.QueueItems)
+	}
+}
+
+func TestStreamQueue_ConnectAndReceive(t *testing.T) {
+	provider := &sourceprovider.MockSourceProvider{}
+	registry := follower.NewFollowersRegistry()
+	trackQueue := queue.NewTrackQueue()
+	server := NewWebServer(":0", provider, registry, trackQueue)
+
+	req := httptest.NewRequest(http.MethodGet, "/queue", nil)
+	rr := httptest.NewRecorder()
+
+	// Use a context that we can cancel to stop the streamer
+	ctx, cancel := context.WithCancel(context.Background())
+	req = req.WithContext(ctx)
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		server.StreamQueue(rr, req)
+	}()
+
+	// Wait for registration
+	time.Sleep(50 * time.Millisecond)
+	
+	server.BroadcastQueueState("test.mp3", []string{"next.mp3"})
+	
+	// Give it a moment to process
+	time.Sleep(50 * time.Millisecond)
+	cancel()
+	wg.Wait()
+	
+	responseBody := rr.Body.String()
+	if !strings.Contains(responseBody, "test.mp3") {
+		t.Errorf("expected response to contain test.mp3, got %s", responseBody)
+	}
+}
+
+func TestStreamQueue_DisconnectRemovesChannel(t *testing.T) {
+	provider := &sourceprovider.MockSourceProvider{}
+	registry := follower.NewFollowersRegistry()
+	trackQueue := queue.NewTrackQueue()
+	server := NewWebServer(":0", provider, registry, trackQueue)
+
+	req := httptest.NewRequest(http.MethodGet, "/queue", nil)
+	rr := httptest.NewRecorder()
+	ctx, cancel := context.WithCancel(context.Background())
+	req = req.WithContext(ctx)
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		server.StreamQueue(rr, req)
+	}()
+
+	// Wait for registration
+	time.Sleep(50 * time.Millisecond)
+	
+	server.mu.Lock()
+	countBefore := len(server.connections)
+	server.mu.Unlock()
+	
+	if countBefore != 1 {
+		t.Fatalf("expected 1 connection, got %d", countBefore)
+	}
+
+	cancel() // Trigger disconnect
+	wg.Wait()
+	
+	server.mu.Lock()
+	countAfter := len(server.connections)
+	server.mu.Unlock()
+	
+	if countAfter != 0 {
+		t.Errorf("expected 0 connections after disconnect, got %d", countAfter)
+	}
 }

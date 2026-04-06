@@ -26,7 +26,8 @@ type AudioStreamer struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 
-	Followers         *follower.FollowersRegistry
+	Followers *follower.FollowersRegistry
+
 	TrackQueue        *queue.TrackQueue
 	StreamingInterval time.Duration
 	SourceProvider    sourceprovider.SourceProvider
@@ -61,39 +62,54 @@ func (streamer *AudioStreamer) AddToQueue(filePath string) {
 	streamer.TrackQueue.PushBack(filePath)
 }
 
-func (streamer *AudioStreamer) StreamAudioToAll() {
-	filePath := streamer.TrackQueue.PopFront()
-	logging.Log(logPrefix, "Stream "+filePath)
+func (streamer *AudioStreamer) StreamAudioToAll(stop chan struct{}) {
+	trackID := streamer.TrackQueue.PopFront()
+	streamer.TrackQueue.SetNowPlaying(trackID)
+	logging.Log(logPrefix, "Stream "+trackID)
 
-	audioSource := streamer.SourceProvider.GetSource(filePath)
+	audioSource, err := streamer.SourceProvider.GetSource(trackID)
+	if err != nil {
+		logging.Log(logPrefix, "Error preparing track: "+err.Error())
+		return
+	}
+	defer audioSource.Close()
+
 	ticker := time.NewTicker(streamer.StreamingInterval)
 	defer ticker.Stop()
 
 	buffer := make([]byte, 3528)
 
 	for {
-		streamer.MediaClock.UpdateMediaTime()
-		if streamer.MediaClock.GetSentTimeInt64()-streamer.MediaClock.GetMediaTimeInt64() > streamer.LookAhead {
-			<-ticker.C
-			continue
+		select {
+		case <-stop:
+			logging.Log(logPrefix, "Cancelling song.")
+			streamer.TrackQueue.SetNowPlaying("")
+			return
+		default:
+			streamer.MediaClock.UpdateMediaTime()
+			if streamer.MediaClock.GetSentTimeInt64()-streamer.MediaClock.GetMediaTimeInt64() > streamer.LookAhead {
+				<-ticker.C
+				continue
+			}
+
+			dataSize, err := audioSource.Read(buffer)
+			if dataSize == 0 || err != nil {
+				logging.Log(logPrefix, "Exiting play loop: n="+strconv.Itoa(dataSize)+" err="+err.Error())
+				streamer.TrackQueue.SetNowPlaying("")
+				return
+			}
+
+			envelope := streamer.prepareEnvelope(buffer, dataSize, int(audioSource.SampleRate))
+
+			for _, f := range streamer.Followers.Registry {
+				streamAudioToFollower(envelope, f)
+			}
+
+			durationSent := int64(dataSize) * 1e9 / (audioSource.SampleRate * audioSource.Channels * 2)
+			streamer.MediaClock.AddToSentTime(durationSent)
+
+			time.Sleep(2 * time.Millisecond)
 		}
-
-		dataSize, err := audioSource.Read(buffer)
-		if dataSize == 0 || err != nil {
-			logging.Log(logPrefix, "Exiting play loop: n="+strconv.Itoa(dataSize)+" err="+err.Error())
-			break
-		}
-
-		envelope := streamer.prepareEnvelope(buffer, dataSize, int(audioSource.SampleRate))
-
-		for _, f := range streamer.Followers.Registry {
-			streamAudioToFollower(envelope, f)
-		}
-
-		durationSent := int64(dataSize) * 1e9 / (audioSource.SampleRate * audioSource.Channels * 2)
-		streamer.MediaClock.AddToSentTime(durationSent)
-
-		time.Sleep(2 * time.Millisecond)
 	}
 }
 
@@ -135,7 +151,7 @@ func (streamer *AudioStreamer) StreamAudioToAllLoop(stop chan struct{}) {
 			streamer.MediaClock = *clock.NewMediaClock()
 			streamer.MediaClock.UpdateStartTime(int(streamer.LookAhead))
 			streamer.mu.Unlock()
-			streamer.StreamAudioToAll()
+			streamer.StreamAudioToAll(stop)
 		}
 	}
 }

@@ -55,7 +55,7 @@ func expose(
 			clock.InitStartTime(absoluteStartTime)
 		}
 
-		if sampleRate > 0 && (!playerInitDone || audioStream.GetSampleRate() != int(sampleRate)) {
+		if sampleRate > 0 && !playerInitDone {
 			audioStream.SetSampleRate(int(sampleRate))
 			_, player := NewPlayer(audioStream, int(sampleRate))
 			go checkPlayerError(player, 1*time.Second)
