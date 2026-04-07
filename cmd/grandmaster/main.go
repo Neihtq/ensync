@@ -32,7 +32,8 @@ func provideNavidromeProvider() *sourceprovider.NaviDromeProvider {
 }
 
 func provideFollowersRegistry() *follower.FollowersRegistry {
-	return follower.NewFollowersRegistry()
+	heartbeatPort := ntpPort
+	return follower.NewFollowersRegistry(heartbeatPort)
 }
 
 func provideTrackQueue() *queue.TrackQueue {
@@ -71,9 +72,11 @@ func main() {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
+	log("Start Follower service")
 	followersRegistry := provideFollowersRegistry()
+	followersRegistry.StartFollowerService(stop)
 
-	log("Start NTP service")
+	log("Start ClockSync service")
 	clockSyncService := provideClockSyncService()
 	go clockSyncService.ExposeNTP(stop)
 

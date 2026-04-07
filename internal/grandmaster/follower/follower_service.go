@@ -11,7 +11,7 @@ import (
 	"ensync/internal/grandmaster/logging"
 )
 
-const logPrefix = "[FollowerService]"
+const logPrefix = "[FollowerRegistry]"
 
 func logMessage(message string) {
 	logging.Log(logPrefix, message)
@@ -20,7 +20,7 @@ func logMessage(message string) {
 func SubscribeFollower(followersRegistry *FollowersRegistry, url string, ntpPort string) error {
 	ipAddr := netutil.GetOutboundIP()
 	addr := ipAddr.String() + ":" + strings.Trim(ntpPort, ":")
-	fmt.Println("Subscribing ", addr)
+	logMessage("Subscribing " + addr)
 	data := map[string]string{"address": addr}
 	jsonData, _ := json.Marshal(data)
 	resp, err := http.Post("http://"+url, "application/json", bytes.NewBuffer(jsonData))

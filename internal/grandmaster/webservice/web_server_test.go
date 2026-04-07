@@ -19,7 +19,8 @@ import (
 
 func TestNewWebServer(t *testing.T) {
 	provider := &sourceprovider.MockSourceProvider{}
-	registry := follower.NewFollowersRegistry()
+	heartbeatPort := ":65533"
+	registry := follower.NewFollowersRegistry(heartbeatPort)
 	trackQueue := queue.NewTrackQueue()
 	port := ":9999"
 
@@ -37,7 +38,8 @@ func TestNewWebServer(t *testing.T) {
 
 func TestGetSongs(t *testing.T) {
 	provider := &sourceprovider.MockSourceProvider{}
-	registry := follower.NewFollowersRegistry()
+	heartbeatPort := ":65533"
+	registry := follower.NewFollowersRegistry(heartbeatPort)
 	trackQueue := queue.NewTrackQueue()
 	server := NewWebServer(":9999", provider, registry, trackQueue)
 
@@ -73,7 +75,8 @@ func TestGetSongs(t *testing.T) {
 
 func TestGetSongs_WithSearch(t *testing.T) {
 	provider := &sourceprovider.MockSourceProvider{}
-	registry := follower.NewFollowersRegistry()
+	heartbeatPort := ":65533"
+	registry := follower.NewFollowersRegistry(heartbeatPort)
 	trackQueue := queue.NewTrackQueue()
 	server := NewWebServer(":9999", provider, registry, trackQueue)
 
@@ -110,7 +113,8 @@ func TestGetSongs_WithSearch(t *testing.T) {
 
 func TestListFollowers(t *testing.T) {
 	provider := &sourceprovider.MockSourceProvider{}
-	registry := follower.NewFollowersRegistry()
+	heartbeatPort := ":65533"
+	registry := follower.NewFollowersRegistry(heartbeatPort)
 	trackQueue := queue.NewTrackQueue()
 
 	registry.RegisterFollower("192.168.1.10", "8000")
@@ -166,7 +170,8 @@ func TestListFollowers(t *testing.T) {
 
 func TestPushTrack_ValidJSON(t *testing.T) {
 	provider := &sourceprovider.MockSourceProvider{}
-	registry := follower.NewFollowersRegistry()
+	heartbeatPort := ":65533"
+	registry := follower.NewFollowersRegistry(heartbeatPort)
 	trackQueue := queue.NewTrackQueue()
 	server := NewWebServer(":9999", provider, registry, trackQueue)
 
@@ -193,7 +198,8 @@ func TestPushTrack_ValidJSON(t *testing.T) {
 
 func TestPushTrack_InvalidJSON(t *testing.T) {
 	provider := &sourceprovider.MockSourceProvider{}
-	registry := follower.NewFollowersRegistry()
+	heartbeatPort := ":65533"
+	registry := follower.NewFollowersRegistry(heartbeatPort)
 	trackQueue := queue.NewTrackQueue()
 	server := NewWebServer(":9999", provider, registry, trackQueue)
 
@@ -216,7 +222,8 @@ func TestPushTrack_InvalidJSON(t *testing.T) {
 
 func TestStartServer(t *testing.T) {
 	provider := &sourceprovider.MockSourceProvider{}
-	registry := follower.NewFollowersRegistry()
+	heartbeatPort := ":65533"
+	registry := follower.NewFollowersRegistry(heartbeatPort)
 	trackQueue := queue.NewTrackQueue()
 	// Assigning :0 lets the OS pick a random available port preventing address in use errors in tests
 	server := NewWebServer(":0", provider, registry, trackQueue)
@@ -231,7 +238,8 @@ func TestStartServer(t *testing.T) {
 
 func TestBroadcastQueueState_SendsToConnections(t *testing.T) {
 	provider := &sourceprovider.MockSourceProvider{}
-	registry := follower.NewFollowersRegistry()
+	heartbeatPort := ":65533"
+	registry := follower.NewFollowersRegistry(heartbeatPort)
 	trackQueue := queue.NewTrackQueue()
 	server := NewWebServer(":0", provider, registry, trackQueue)
 
@@ -258,7 +266,8 @@ func TestBroadcastQueueState_SendsToConnections(t *testing.T) {
 
 func TestBroadcastQueueState_SkipsFullChannels(t *testing.T) {
 	provider := &sourceprovider.MockSourceProvider{}
-	registry := follower.NewFollowersRegistry()
+	heartbeatPort := ":65533"
+	registry := follower.NewFollowersRegistry(heartbeatPort)
 	trackQueue := queue.NewTrackQueue()
 	server := NewWebServer(":0", provider, registry, trackQueue)
 
@@ -282,7 +291,8 @@ func TestBroadcastQueueState_SkipsFullChannels(t *testing.T) {
 
 func TestBroadcastQueueState_EmptyQueueItems(t *testing.T) {
 	provider := &sourceprovider.MockSourceProvider{}
-	registry := follower.NewFollowersRegistry()
+	heartbeatPort := ":65533"
+	registry := follower.NewFollowersRegistry(heartbeatPort)
 	trackQueue := queue.NewTrackQueue()
 	server := NewWebServer(":0", provider, registry, trackQueue)
 
@@ -304,7 +314,8 @@ func TestBroadcastQueueState_EmptyQueueItems(t *testing.T) {
 
 func TestStreamQueue_ConnectAndReceive(t *testing.T) {
 	provider := &sourceprovider.MockSourceProvider{}
-	registry := follower.NewFollowersRegistry()
+	heartbeatPort := ":65533"
+	registry := follower.NewFollowersRegistry(heartbeatPort)
 	trackQueue := queue.NewTrackQueue()
 	server := NewWebServer(":0", provider, registry, trackQueue)
 
@@ -340,7 +351,8 @@ func TestStreamQueue_ConnectAndReceive(t *testing.T) {
 
 func TestStreamQueue_DisconnectRemovesChannel(t *testing.T) {
 	provider := &sourceprovider.MockSourceProvider{}
-	registry := follower.NewFollowersRegistry()
+	heartbeatPort := ":65533"
+	registry := follower.NewFollowersRegistry(heartbeatPort)
 	trackQueue := queue.NewTrackQueue()
 	server := NewWebServer(":0", provider, registry, trackQueue)
 

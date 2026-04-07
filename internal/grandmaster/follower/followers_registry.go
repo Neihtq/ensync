@@ -2,8 +2,11 @@
 package follower
 
 import (
+	"fmt"
+	"net"
 	"strings"
 	"sync"
+	"time"
 )
 
 const followsLogPrefix = "[FollowersRegistry]"
@@ -20,12 +23,14 @@ type removeFollowersRequest struct {
 
 type FollowersRegistry struct {
 	sync.RWMutex
-	Registry map[string]*Follower
+	Registry      map[string]*Follower
+	HeartbeatPort string
 }
 
-func NewFollowersRegistry() *FollowersRegistry {
+func NewFollowersRegistry(heartbeatPort string) *FollowersRegistry {
 	return &FollowersRegistry{
-		Registry: make(map[string]*Follower),
+		Registry:      make(map[string]*Follower),
+		HeartbeatPort: heartbeatPort,
 	}
 }
 
@@ -38,6 +43,8 @@ func (registry *FollowersRegistry) RegisterFollower(ipAddress string, port strin
 	if _, exists := registry.Registry[ipAddress]; !exists {
 		newFollower := NewFollower(audioURL)
 		registry.Registry[ipAddress] = &newFollower
+	} else {
+		registry.Registry[ipAddress].SetAudioURL(audioURL)
 	}
 }
 
@@ -51,4 +58,95 @@ func (registry *FollowersRegistry) GetAllFollowers() []string {
 	}
 
 	return followerUrls
+}
+
+func (registry *FollowersRegistry) StartHeartbeatService(stop chan struct{}) {
+	addr, err := net.ResolveTCPAddr("tcp", registry.HeartbeatPort)
+	if err != nil {
+		panic(err)
+	}
+
+	listener, err := net.ListenTCP("tcp", addr)
+	if err != nil {
+		panic(err)
+	}
+	defer listener.Close()
+
+	fmt.Println("Heartbeat service listening on ", listener.Addr().String())
+
+	for {
+		select {
+		case <-stop:
+			return
+		default:
+			conn, err := listener.AcceptTCP()
+			if err != nil {
+				fmt.Println("Error accepting conn:", err)
+				continue
+			}
+			registry.HandleHeartbeat(conn)
+		}
+	}
+}
+
+func (registry *FollowersRegistry) HandleHeartbeat(conn *net.TCPConn) {
+	clientAddr := conn.RemoteAddr().String()
+	ipAddress, _, err := net.SplitHostPort(clientAddr)
+	if err != nil {
+		fmt.Println("Error parsing remote address:", err)
+		return
+	}
+	conn.SetKeepAlive(true)
+	conn.SetKeepAlivePeriod(10 * time.Second)
+
+	if _, exists := registry.Registry[ipAddress]; !exists {
+		newFollower := NewFollowerWithTCP(conn)
+		registry.Lock()
+		registry.Registry[ipAddress] = &newFollower
+		registry.Unlock()
+	} else {
+		registry.Registry[ipAddress].SetTCPConn(conn)
+	}
+
+	fmt.Println("Follower joined Heartbeat service:", ipAddress)
+}
+
+func (registry *FollowersRegistry) UnsubscribeFollower(addr string) {
+	registry.Lock()
+	defer registry.Unlock()
+
+	if f, exists := registry.Registry[addr]; exists {
+		if conn := f.TCPConn; conn != nil {
+			conn.Close()
+		}
+	}
+	delete(registry.Registry, addr)
+}
+
+func (registry *FollowersRegistry) CheckHealthyFollowers(stop chan struct{}) {
+	buf := make([]byte, 1)
+	for {
+		select {
+		case <-stop:
+			return
+		default:
+			for addr, follower := range registry.Registry {
+				conn := follower.GetTCPConn()
+				if conn == nil {
+					continue
+				}
+				_, err := conn.Read(buf)
+				if err != nil {
+					fmt.Printf("Evicting unreachable Follower %s: \n", addr)
+					registry.UnsubscribeFollower(addr)
+				}
+			}
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+}
+
+func (registry *FollowersRegistry) StartFollowerService(stop chan struct{}) {
+	go registry.StartHeartbeatService(stop)
+	go registry.CheckHealthyFollowers(stop)
 }
