@@ -2,6 +2,7 @@ package controlplane
 
 import (
 	"bytes"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -39,6 +40,10 @@ func TestStartClockSync(t *testing.T) {
 	request := httptest.NewRequest(http.MethodPost, "/connections", bytes.NewBuffer(jsonBody))
 	request.Header.Set("Content-Type", "application/json")
 	writer := httptest.NewRecorder()
+
+	tcpAddr, _ := net.ResolveTCPAddr("tcp", address)
+	tcpConn, _ := net.ListenTCP("tcp", tcpAddr)
+	defer tcpConn.Close()
 
 	// act
 	cp.StartClockSync(writer, request)

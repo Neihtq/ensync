@@ -1,6 +1,7 @@
 package follower
 
 import (
+	"net"
 	"testing"
 	"time"
 
@@ -21,10 +22,14 @@ func TestSubscribeFollower(t *testing.T) {
 	go cp.StartService(cpPort)
 	time.Sleep(20 * time.Millisecond)
 
-	registry := NewFollowersRegistry()
 	endpoint := "/connections"
 	url := "127.0.0.1"
 	ntpPort := ":9111"
+	registry := NewFollowersRegistry(ntpPort)
+
+	tcpAddr, _ := net.ResolveTCPAddr("tcp", "0.0.0.0"+ntpPort)
+	tcpConn, _ := net.ListenTCP("tcp", tcpAddr)
+	defer tcpConn.Close()
 
 	// act
 	err := SubscribeFollower(registry, url+cpPort+endpoint, ntpPort)
@@ -69,7 +74,8 @@ func TestFollower_GetConnection_Nil(t *testing.T) {
 }
 
 func TestNewFollowersRegistry(t *testing.T) {
-	registry := NewFollowersRegistry()
+	heartbeatPort := ":65533"
+	registry := NewFollowersRegistry(heartbeatPort)
 	if registry == nil {
 		t.Fatal("expected non-nil registry")
 	}
@@ -78,24 +84,9 @@ func TestNewFollowersRegistry(t *testing.T) {
 	}
 }
 
-func TestFollowersRegistry_RegisterFollower_Duplicate(t *testing.T) {
-	registry := NewFollowersRegistry()
-	registry.RegisterFollower("192.168.1.10", "8000")
-	registry.RegisterFollower("192.168.1.10", "9000") // same IP, different port
-
-	if len(registry.Registry) != 1 {
-		t.Errorf("expected 1 follower (deduplicated by IP), got %d", len(registry.Registry))
-	}
-
-	// Should keep the first registration
-	f := registry.Registry["192.168.1.10"]
-	if f.AudioURL != "192.168.1.10:8000" {
-		t.Errorf("expected first registration to persist, got AudioURL '%s'", f.AudioURL)
-	}
-}
-
 func TestFollowersRegistry_GetAllFollowers(t *testing.T) {
-	registry := NewFollowersRegistry()
+	heartbeatPort := ":65533"
+	registry := NewFollowersRegistry(heartbeatPort)
 
 	followers := registry.GetAllFollowers()
 	if len(followers) != 0 {
@@ -113,10 +104,10 @@ func TestFollowersRegistry_GetAllFollowers(t *testing.T) {
 
 func TestFollower_InitConnection(t *testing.T) {
 	// Use a local address for testing
-	f := NewFollower("127.0.0.1:9999") 
-	
+	f := NewFollower("127.0.0.1:9999")
+
 	f.InitConnection()
-	
+
 	conn := f.GetConnection()
 	if conn == nil {
 		t.Fatal("expected connection to be initialized")

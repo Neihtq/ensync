@@ -46,7 +46,7 @@ func (ds *DiscoveryService) ScanForServers(entriesCh chan *mdns.ServiceEntry) {
 		if err != nil {
 			fmt.Println("[Discovery] Query error:", err)
 		}
-		time.Sleep(10 * time.Second)
+		time.Sleep(2 * time.Second)
 	}
 }
 

@@ -24,7 +24,8 @@ func TestDiscoverFollower(t *testing.T) {
 	go cp.StartService(cpPort)
 	time.Sleep(20 * time.Millisecond)
 
-	registry := follower.NewFollowersRegistry()
+	heartbeatPort := ":65533"
+	registry := follower.NewFollowersRegistry(heartbeatPort)
 	ntpPort := ":9111"
 
 	addrV4 := "127.0.0.1"
@@ -47,8 +48,8 @@ func TestDiscoverFollower(t *testing.T) {
 func TestDiscover(t *testing.T) {
 	t.Skip("Skipping mDNS test")
 	// arrange
-	registry := follower.NewFollowersRegistry()
 	ntpPort := ":9999"
+	registry := follower.NewFollowersRegistry(ntpPort)
 
 	// act
 	discoveryService := NewDiscoveryService(registry, ntpPort)

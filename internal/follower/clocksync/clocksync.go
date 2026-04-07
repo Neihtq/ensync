@@ -18,11 +18,11 @@ const (
 )
 
 type ClockSync struct {
-	mu            sync.Mutex
-	Clock         *mirrorclock.MirrorClock
-	Conn          *net.UDPConn
-	ListeningAddr string
-	Interval      time.Duration
+	mu        sync.Mutex
+	Clock     *mirrorclock.MirrorClock
+	Conn      *net.UDPConn
+	Interval  time.Duration
+	Heartbeat *net.TCPConn
 }
 
 func NewClockSync(clock *mirrorclock.MirrorClock, serverURL string) *ClockSync {
@@ -35,10 +35,20 @@ func NewClockSync(clock *mirrorclock.MirrorClock, serverURL string) *ClockSync {
 		log.Fatal(err)
 	}
 
+	tcpAddr, err := net.ResolveTCPAddr("tcp", serverURL)
+	if err != nil {
+		log.Fatal(err)
+	}
+	tcpConn, err := net.DialTCP("tcp", nil, tcpAddr)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	return &ClockSync{
-		Clock:    clock,
-		Conn:     conn,
-		Interval: 100 * time.Millisecond,
+		Clock:     clock,
+		Conn:      conn,
+		Interval:  100 * time.Millisecond,
+		Heartbeat: tcpConn,
 	}
 }
 
@@ -82,16 +92,24 @@ func (clockSync *ClockSync) RunClockSync(stop chan struct{}) {
 	go clockSync.ReceiveNTPPackets(stop)
 	ticker := time.NewTicker(clockSync.Interval)
 	defer ticker.Stop()
+	defer clockSync.Heartbeat.Close()
+	defer clockSync.Conn.Close()
 
+	buf := make([]byte, 1)
 	for {
 		select {
 		case <-stop:
 			fmt.Println("Stopping Clocksync...")
 			return
 		case <-ticker.C:
+			_, dead := clockSync.Heartbeat.Write(buf)
+			if dead != nil {
+				fmt.Println("Hearbeat service unavailable:", dead)
+				return
+			}
 			err := clockSync.SendNTPRequest()
 			if err != nil {
-				fmt.Println("ClockSync service unavailable")
+				fmt.Println("ClockSync service unavailable:", err)
 				return
 			}
 		}

@@ -13,16 +13,22 @@ func TestSendNTPRequest(t *testing.T) {
 	// arrange
 	clock := mirrorclock.NewMirrorClock()
 	serverURL := "127.0.0.1:0"
-	addr, _ := net.ResolveUDPAddr("udp", serverURL)
-	conn, _ := net.ListenUDP("udp", addr)
-	defer conn.Close()
+
+	tcpAddr, _ := net.ResolveTCPAddr("tcp", serverURL)
+	tcpConn, _ := net.ListenTCP("tcp", tcpAddr)
+	defer tcpConn.Close()
+
+	udpAddr, _ := net.ResolveUDPAddr("udp", tcpConn.Addr().String())
+	udpConn, _ := net.ListenUDP("udp", udpAddr)
+	defer udpConn.Close()
+
 	timeNow := uint64(time.Now().UnixNano())
-	clockSync := NewClockSync(clock, conn.LocalAddr().String())
+	clockSync := NewClockSync(clock, udpConn.LocalAddr().String())
 
 	received := make(chan []byte)
 	go func() {
 		buffer := make([]byte, 8)
-		_, _, err := conn.ReadFromUDP(buffer)
+		_, _, err := udpConn.ReadFromUDP(buffer)
 		if err != nil {
 			panic("Error receigin UDP message: " + err.Error())
 		}
@@ -50,6 +56,11 @@ func TestReceiveNTPPackets(t *testing.T) {
 	// arrange
 	clock := mirrorclock.NewMirrorClock()
 	serverURL := "127.0.0.1:9990"
+
+	tcpAddr, _ := net.ResolveTCPAddr("tcp", serverURL)
+	tcpConn, _ := net.ListenTCP("tcp", tcpAddr)
+	defer tcpConn.Close()
+
 	clockSync := NewClockSync(clock, serverURL)
 
 	stop := make(chan struct{})
