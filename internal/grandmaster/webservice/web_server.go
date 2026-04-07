@@ -18,8 +18,13 @@ type PushTrackRequest struct {
 }
 
 type State struct {
-	NowPlaying   string   `json:"nowPlaying,omitempty"`
-	QueueItems   []string `json:"queueItems,omitempty"`
+	NowPlaying    string        `json:"nowPlaying,omitempty"`
+	QueueItems    []string      `json:"queueItems,omitempty"`
+	RegistryState RegistryState `json:"registry,omitempty"`
+	IsRegistry    bool          `json:"isRegistry"`
+}
+
+type RegistryState struct {
 	FollowerUrls []string `json:"followerUrls,omitempty"`
 }
 
@@ -120,6 +125,7 @@ func (server *WebServer) BroadcastQueueState(nowPlaying string, queueItems []str
 	state := State{
 		NowPlaying: nowPlayingTitle,
 		QueueItems: items,
+		IsRegistry: false,
 	}
 
 	for _, ch := range server.connections {
@@ -134,7 +140,11 @@ func (server *WebServer) BroadcastRegistry(followerUrls []string) {
 	server.mu.Lock()
 	defer server.mu.Unlock()
 
-	state := State{FollowerUrls: followerUrls}
+	registryState := RegistryState{FollowerUrls: followerUrls}
+	state := State{
+		RegistryState: registryState,
+		IsRegistry:    true,
+	}
 	for _, ch := range server.connections {
 		select {
 		case ch <- state:
@@ -177,7 +187,6 @@ func (server *WebServer) StreamState(writer http.ResponseWriter, request *http.R
 		case state := <-messageChan:
 			payload, err := json.Marshal(state)
 			if err != nil {
-				fmt.Println("Error marshalling JSON:", err)
 				continue
 			}
 			fmt.Fprintf(writer, "data: %s\n\n", payload)

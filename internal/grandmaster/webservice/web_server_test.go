@@ -412,10 +412,13 @@ func TestBroadcastRegistry_SendsToConnections(t *testing.T) {
 			t.Errorf("expected NowPlaying empty, got '%s'", state.NowPlaying)
 		}
 		if state.QueueItems != nil {
-			t.Errorf("expect QueueItems nil: %v", state.QueueItems)
+			t.Errorf("expected QueueItems nil: %v", state.QueueItems)
 		}
-		if len(state.FollowerUrls) != 1 || state.FollowerUrls[0] != "mock1" {
-			t.Errorf("expected FollowerUrls 'mock1', got '%s'", state.FollowerUrls)
+		if !state.IsRegistry {
+			t.Errorf("expected IsRegistry true, but was false")
+		}
+		if len(state.RegistryState.FollowerUrls) != 1 || state.RegistryState.FollowerUrls[0] != "mock1" {
+			t.Errorf("expected FollowerUrls 'mock1', got '%s'", state.RegistryState.FollowerUrls)
 		}
 	case <-time.After(100 * time.Millisecond):
 		t.Fatal("timed out waiting for broadcast")

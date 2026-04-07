@@ -546,17 +546,18 @@
 
             evtSource.onmessage = function (event) {
                 const data = JSON.parse(event.data);
-                if (data.followers) {
-                    if (data && data.followerUrls) {
-                        data.followerUrls.forEach(follower => {
+                if (data.isRegistry) {
+                    const registry = data.registry
+                    followersList.replaceChildren();
+                    if (registry.followerUrls) {
+                        registry.followerUrls.forEach(follower => {
                             const li = document.createElement('li');
-                            // Add hyperlink to mimic gamefaqs links
                             const p = document.createElement('p');
                             p.textContent = follower;
                             li.appendChild(p);
                             followersList.appendChild(li);
                         });
-                    } else if (data && data.followerUrls && data.followerUrls.length === 0) {
+                    } else {
                         const li = document.createElement('li');
                         li.textContent = "No followers currently connected.";
                         followersList.appendChild(li);
