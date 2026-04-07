@@ -95,6 +95,7 @@ func main() {
 	log("Start Web Server")
 	webServer := provideWebserver(provider, followersRegistry, trackQueue)
 	trackQueue.SetCallbackHook(webServer.BroadcastQueueState)
+	followersRegistry.SetCallbackHook(webServer.BroadcastRegistry)
 	go webServer.StartServer()
 
 	<-sigChan

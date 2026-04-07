@@ -25,6 +25,8 @@ type FollowersRegistry struct {
 	sync.RWMutex
 	Registry      map[string]*Follower
 	HeartbeatPort string
+
+	OnRegistryChanged func(followerUrls []string)
 }
 
 func NewFollowersRegistry(heartbeatPort string) *FollowersRegistry {
@@ -36,7 +38,6 @@ func NewFollowersRegistry(heartbeatPort string) *FollowersRegistry {
 
 func (registry *FollowersRegistry) RegisterFollower(ipAddress string, port string) {
 	registry.Lock()
-	defer registry.Unlock()
 
 	audioURL := ipAddress + ":" + strings.Trim(port, ":")
 
@@ -46,6 +47,9 @@ func (registry *FollowersRegistry) RegisterFollower(ipAddress string, port strin
 	} else {
 		registry.Registry[ipAddress].SetAudioURL(audioURL)
 	}
+	registry.Unlock()
+
+	callHook(registry)
 }
 
 func (registry *FollowersRegistry) GetAllFollowers() []string {
@@ -113,7 +117,6 @@ func (registry *FollowersRegistry) HandleHeartbeat(conn *net.TCPConn) {
 
 func (registry *FollowersRegistry) UnsubscribeFollower(addr string) {
 	registry.Lock()
-	defer registry.Unlock()
 
 	if f, exists := registry.Registry[addr]; exists {
 		if conn := f.TCPConn; conn != nil {
@@ -121,6 +124,22 @@ func (registry *FollowersRegistry) UnsubscribeFollower(addr string) {
 		}
 	}
 	delete(registry.Registry, addr)
+	registry.Unlock()
+
+	callHook(registry)
+}
+
+func (registry *FollowersRegistry) SetCallbackHook(
+	onRegistryChanged func(followerUrls []string),
+) {
+	registry.OnRegistryChanged = onRegistryChanged
+}
+
+func callHook(registry *FollowersRegistry) {
+	if registry.OnRegistryChanged != nil {
+		followerUrls := registry.GetAllFollowers()
+		registry.OnRegistryChanged(followerUrls)
+	}
 }
 
 func (registry *FollowersRegistry) CheckHealthyFollowers(stop chan struct{}) {

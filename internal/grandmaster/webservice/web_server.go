@@ -17,14 +17,15 @@ type PushTrackRequest struct {
 	TrackIdentifier string `json:"trackId"`
 }
 
-type QueueState struct {
-	NowPlaying string   `json:"nowPlaying"`
-	QueueItems []string `json:"queueItems"`
+type State struct {
+	NowPlaying   string   `json:"nowPlaying,omitempty"`
+	QueueItems   []string `json:"queueItems,omitempty"`
+	FollowerUrls []string `json:"followerUrls,omitempty"`
 }
 
 type WebServer struct {
 	mu                sync.Mutex
-	connections       []chan QueueState
+	connections       []chan State
 	Port              string
 	SourceProvider    sourceprovider.SourceProvider
 	FollowersRegistry *follower.FollowersRegistry
@@ -53,7 +54,7 @@ func (server *WebServer) StartServer() {
 	mux.HandleFunc("GET /songs", server.GetSongs)
 	mux.HandleFunc("GET /followers", server.ListFollowers)
 	mux.HandleFunc("POST /tracks", server.PushTrack)
-	mux.HandleFunc("GET /queue", server.StreamQueue)
+	mux.HandleFunc("GET /state", server.StreamState)
 
 	fmt.Println("Webserver running on port", server.Port)
 	http.ListenAndServe(server.Port, mux)
@@ -116,7 +117,7 @@ func (server *WebServer) BroadcastQueueState(nowPlaying string, queueItems []str
 		nowPlayingTitle = server.SourceProvider.GetTitle(nowPlaying)
 	}
 
-	state := QueueState{
+	state := State{
 		NowPlaying: nowPlayingTitle,
 		QueueItems: items,
 	}
@@ -129,7 +130,20 @@ func (server *WebServer) BroadcastQueueState(nowPlaying string, queueItems []str
 	}
 }
 
-func (server *WebServer) StreamQueue(writer http.ResponseWriter, request *http.Request) {
+func (server *WebServer) BroadcastRegistry(followerUrls []string) {
+	server.mu.Lock()
+	defer server.mu.Unlock()
+
+	state := State{FollowerUrls: followerUrls}
+	for _, ch := range server.connections {
+		select {
+		case ch <- state:
+		default:
+		}
+	}
+}
+
+func (server *WebServer) StreamState(writer http.ResponseWriter, request *http.Request) {
 	writer.Header().Set("Content-Type", "text/event-stream")
 	writer.Header().Set("Cache-Control", "no-cache")
 	writer.Header().Set("Connection", "keep-alive")
@@ -140,7 +154,7 @@ func (server *WebServer) StreamQueue(writer http.ResponseWriter, request *http.R
 		return
 	}
 
-	messageChan := make(chan QueueState, 1)
+	messageChan := make(chan State, 1)
 
 	server.mu.Lock()
 	server.connections = append(server.connections, messageChan)
@@ -160,8 +174,8 @@ func (server *WebServer) StreamQueue(writer http.ResponseWriter, request *http.R
 			}
 			server.mu.Unlock()
 			return
-		case queueState := <-messageChan:
-			payload, err := json.Marshal(queueState)
+		case state := <-messageChan:
+			payload, err := json.Marshal(state)
 			if err != nil {
 				fmt.Println("Error marshalling JSON:", err)
 				continue

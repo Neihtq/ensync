@@ -244,7 +244,7 @@ func TestBroadcastQueueState_SendsToConnections(t *testing.T) {
 	server := NewWebServer(":0", provider, registry, trackQueue)
 
 	// Simulate a connected SSE client
-	ch := make(chan QueueState, 1)
+	ch := make(chan State, 1)
 	server.mu.Lock()
 	server.connections = append(server.connections, ch)
 	server.mu.Unlock()
@@ -272,8 +272,8 @@ func TestBroadcastQueueState_SkipsFullChannels(t *testing.T) {
 	server := NewWebServer(":0", provider, registry, trackQueue)
 
 	// Simulate a slow client with a full channel
-	ch := make(chan QueueState, 1)
-	ch <- QueueState{NowPlaying: "stale"} // fill the buffer
+	ch := make(chan State, 1)
+	ch <- State{NowPlaying: "stale"} // fill the buffer
 
 	server.mu.Lock()
 	server.connections = append(server.connections, ch)
@@ -296,7 +296,7 @@ func TestBroadcastQueueState_EmptyQueueItems(t *testing.T) {
 	trackQueue := queue.NewTrackQueue()
 	server := NewWebServer(":0", provider, registry, trackQueue)
 
-	ch := make(chan QueueState, 1)
+	ch := make(chan State, 1)
 	server.mu.Lock()
 	server.connections = append(server.connections, ch)
 	server.mu.Unlock()
@@ -312,14 +312,14 @@ func TestBroadcastQueueState_EmptyQueueItems(t *testing.T) {
 	}
 }
 
-func TestStreamQueue_ConnectAndReceive(t *testing.T) {
+func TestStreamState_ConnectAndReceive(t *testing.T) {
 	provider := &sourceprovider.MockSourceProvider{}
 	heartbeatPort := ":65533"
 	registry := follower.NewFollowersRegistry(heartbeatPort)
 	trackQueue := queue.NewTrackQueue()
 	server := NewWebServer(":0", provider, registry, trackQueue)
 
-	req := httptest.NewRequest(http.MethodGet, "/queue", nil)
+	req := httptest.NewRequest(http.MethodGet, "/state", nil)
 	rr := httptest.NewRecorder()
 
 	// Use a context that we can cancel to stop the streamer
@@ -330,7 +330,7 @@ func TestStreamQueue_ConnectAndReceive(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		server.StreamQueue(rr, req)
+		server.StreamState(rr, req)
 	}()
 
 	// Wait for registration
@@ -349,14 +349,14 @@ func TestStreamQueue_ConnectAndReceive(t *testing.T) {
 	}
 }
 
-func TestStreamQueue_DisconnectRemovesChannel(t *testing.T) {
+func TestStreamState_DisconnectRemovesChannel(t *testing.T) {
 	provider := &sourceprovider.MockSourceProvider{}
 	heartbeatPort := ":65533"
 	registry := follower.NewFollowersRegistry(heartbeatPort)
 	trackQueue := queue.NewTrackQueue()
 	server := NewWebServer(":0", provider, registry, trackQueue)
 
-	req := httptest.NewRequest(http.MethodGet, "/queue", nil)
+	req := httptest.NewRequest(http.MethodGet, "/state", nil)
 	rr := httptest.NewRecorder()
 	ctx, cancel := context.WithCancel(context.Background())
 	req = req.WithContext(ctx)
@@ -365,7 +365,7 @@ func TestStreamQueue_DisconnectRemovesChannel(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		server.StreamQueue(rr, req)
+		server.StreamState(rr, req)
 	}()
 
 	// Wait for registration
@@ -388,5 +388,36 @@ func TestStreamQueue_DisconnectRemovesChannel(t *testing.T) {
 
 	if countAfter != 0 {
 		t.Errorf("expected 0 connections after disconnect, got %d", countAfter)
+	}
+}
+
+func TestBroadcastRegistry_SendsToConnections(t *testing.T) {
+	provider := &sourceprovider.MockSourceProvider{}
+	heartbeatPort := ":65533"
+	registry := follower.NewFollowersRegistry(heartbeatPort)
+	trackQueue := queue.NewTrackQueue()
+	server := NewWebServer(":0", provider, registry, trackQueue)
+
+	// Simulate a connected SSE client
+	ch := make(chan State, 1)
+	server.mu.Lock()
+	server.connections = append(server.connections, ch)
+	server.mu.Unlock()
+
+	server.BroadcastRegistry([]string{"mock1"})
+
+	select {
+	case state := <-ch:
+		if state.NowPlaying != "" {
+			t.Errorf("expected NowPlaying empty, got '%s'", state.NowPlaying)
+		}
+		if state.QueueItems != nil {
+			t.Errorf("expect QueueItems nil: %v", state.QueueItems)
+		}
+		if len(state.FollowerUrls) != 1 || state.FollowerUrls[0] != "mock1" {
+			t.Errorf("expected FollowerUrls 'mock1', got '%s'", state.FollowerUrls)
+		}
+	case <-time.After(100 * time.Millisecond):
+		t.Fatal("timed out waiting for broadcast")
 	}
 }

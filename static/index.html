@@ -542,30 +542,47 @@
 
             // SSE Listener for Combined Queue and Now Playing
             const nowPlayingLabel = document.getElementById('now-playing-label');
-            const evtSource = new EventSource('/queue');
+            const evtSource = new EventSource('/state');
 
             evtSource.onmessage = function (event) {
                 const data = JSON.parse(event.data);
-
-                // Update Now Playing
-                nowPlayingLabel.textContent = data.nowPlaying || 'Idle';
-
-                // Update Queue List
-                queueList.innerHTML = '';
-                if (data && data.queueItems && data.queueItems.length > 0) {
-                    data.tracks = data.queueItems; // Compatibility if needed
-                    data.queueItems.forEach(track => {
+                if (data.followers) {
+                    if (data && data.followerUrls) {
+                        data.followerUrls.forEach(follower => {
+                            const li = document.createElement('li');
+                            // Add hyperlink to mimic gamefaqs links
+                            const p = document.createElement('p');
+                            p.textContent = follower;
+                            li.appendChild(p);
+                            followersList.appendChild(li);
+                        });
+                    } else if (data && data.followerUrls && data.followerUrls.length === 0) {
                         const li = document.createElement('li');
-                        const p = document.createElement('p');
-                        p.style.margin = "0";
-                        p.textContent = track;
-                        li.appendChild(p);
-                        queueList.appendChild(li);
-                    });
+                        li.textContent = "No followers currently connected.";
+                        followersList.appendChild(li);
+                    }
                 } else {
-                    const li = document.createElement('li');
-                    li.textContent = "Queue is currently empty.";
-                    queueList.appendChild(li);
+                    // Update Now Playing
+                    nowPlayingLabel.textContent = data.nowPlaying || 'Idle';
+
+                    // Update Queue List
+                    queueList.innerHTML = '';
+                    if (data && data.queueItems && data.queueItems.length > 0) {
+                        data.tracks = data.queueItems; // Compatibility if needed
+                        data.queueItems.forEach(track => {
+                            const li = document.createElement('li');
+                            const p = document.createElement('p');
+                            p.style.margin = "0";
+                            p.textContent = track;
+                            li.appendChild(p);
+                            queueList.appendChild(li);
+                        });
+                    } else {
+                        const li = document.createElement('li');
+                        li.textContent = "Queue is currently empty.";
+                        queueList.appendChild(li);
+                    }
+
                 }
             };
 
