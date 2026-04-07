@@ -108,7 +108,7 @@ func (registry *FollowersRegistry) HandleHeartbeat(conn *net.TCPConn) {
 		registry.Registry[ipAddress].SetTCPConn(conn)
 	}
 
-	fmt.Println("Follower joined Heartbeat service:", ipAddress)
+	logMessage("Follower joined Heartbeat service: " + ipAddress)
 }
 
 func (registry *FollowersRegistry) UnsubscribeFollower(addr string) {
@@ -137,7 +137,7 @@ func (registry *FollowersRegistry) CheckHealthyFollowers(stop chan struct{}) {
 				}
 				_, err := conn.Read(buf)
 				if err != nil {
-					fmt.Printf("Evicting unreachable Follower %s: \n", addr)
+					logMessage("Evicting unreachable Follower " + addr)
 					registry.UnsubscribeFollower(addr)
 				}
 			}
