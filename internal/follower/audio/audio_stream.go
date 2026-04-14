@@ -110,14 +110,7 @@ func (stream *AudioStream) Read(playBuffer []byte) (int, error) {
 			return stream.playAudio(playBuffer, targetChunk), nil
 		}
 
-		var bytesPerSec int
-		if stream.sampleRate > 0 {
-			channels := 2
-			bytesPerSample := 2
-			bytesPerSec = stream.sampleRate * channels * bytesPerSample
-		} else {
-			bytesPerSec = 192000 // Fallback to 48000 Hz
-		}
+		bytesPerSec := 192000 // assuming 48000 Hz
 
 		bytesToSilence := int(durationToSilence.Nanoseconds() * int64(bytesPerSec) / 1e9)
 		bytesToSilence = (bytesToSilence / 4) * 4
