@@ -90,6 +90,7 @@ func (registry *FollowersRegistry) StartHeartbeatService(stop chan struct{}) {
 			}
 			registry.HandleHeartbeat(conn)
 		}
+		time.Sleep(100 * time.Millisecond)
 	}
 }
 
@@ -149,6 +150,7 @@ func (registry *FollowersRegistry) CheckHealthyFollowers(stop chan struct{}) {
 		case <-stop:
 			return
 		default:
+			registry.Lock()
 			for addr, follower := range registry.Registry {
 				conn := follower.GetTCPConn()
 				if conn == nil {
@@ -160,6 +162,7 @@ func (registry *FollowersRegistry) CheckHealthyFollowers(stop chan struct{}) {
 					registry.UnsubscribeFollower(addr)
 				}
 			}
+			registry.Unlock()
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
