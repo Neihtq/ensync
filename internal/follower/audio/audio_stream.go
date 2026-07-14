@@ -11,6 +11,12 @@ import (
 
 const startupBytes = 150_000
 
+// maxLateness is how far past its scheduled play time a chunk may be before it is
+// considered stale. Stale chunks are dropped instead of played so the follower can
+// skip forward and resync with the grandmaster rather than playing a backlog it can
+// never catch up on.
+const maxLateness = 500 * time.Millisecond
+
 type AudioChunk struct {
 	data   []byte
 	playAt int64
@@ -90,7 +96,6 @@ func (stream *AudioStream) Read(playBuffer []byte) (int, error) {
 		return len(playBuffer), nil
 	}
 
-	targetChunk := stream.chunks.Front()
 	startTime := stream.clock.GetStartTime()
 
 	if startTime.IsZero() {
@@ -99,8 +104,28 @@ func (stream *AudioStream) Read(playBuffer []byte) (int, error) {
 		return len(playBuffer), nil
 	}
 
-	startPlaybackTime := startTime.Add(time.Duration(targetChunk.playAt))
 	now := stream.clock.Now()
+
+	// Drop chunks whose scheduled play time is already too far in the past. Playing
+	// them would emit stale audio and, since chunks play in FIFO order with no catch-up,
+	// leave the follower permanently behind. Skipping forward lets it resync.
+	for stream.chunks.Len() > 0 {
+		front := stream.chunks.Front()
+		lateness := now.Sub(startTime.Add(time.Duration(front.playAt)))
+		if lateness <= maxLateness {
+			break
+		}
+		stream.chunks.PopFront()
+		stream.bufferSize -= len(front.data)
+	}
+
+	if !stream.bufferIsReady() {
+		zero(playBuffer)
+		return len(playBuffer), nil
+	}
+
+	targetChunk := stream.chunks.Front()
+	startPlaybackTime := startTime.Add(time.Duration(targetChunk.playAt))
 
 	if now.Before(startPlaybackTime) {
 		durationToSilence := startPlaybackTime.Sub(now)

@@ -138,6 +138,37 @@ func TestAudioStreamDoesNotPlayWhenItIsNotTime(t *testing.T) {
 	}
 }
 
+func TestReadDropsStaleChunk(t *testing.T) {
+	// arrange: clock started well in the past so a playAt of 0 is already very late
+	mirrorClock := mirrorclock.NewMirrorClock()
+	mirrorClock.InitStartTime(time.Now().Add(-10 * time.Second).UnixNano())
+	audioStream := NewAudioStream(mirrorClock)
+
+	staleData := make([]byte, startupBytes)   // playAt=0 -> ~10s late, must be dropped
+	freshData := make([]byte, startupBytes)   // scheduled ~now, must play
+	freshPlayAt := int64(10 * time.Second)
+	audioStream.WriteToBuffer(staleData, 0)
+	audioStream.WriteToBuffer(freshData, freshPlayAt)
+
+	mockBuffer := make([]byte, startupBytes)
+
+	// act
+	numBytes, err := audioStream.Read(mockBuffer)
+
+	// assert: the stale chunk is gone and the fresh chunk is what we read
+	if err != nil {
+		t.Errorf("Read failed. %s", err.Error())
+	}
+	if numBytes == 0 {
+		t.Errorf("Expected fresh chunk to be played after dropping stale chunk, got 0 bytes")
+	}
+	audioStream.mu.Lock()
+	defer audioStream.mu.Unlock()
+	if audioStream.chunks.Len() != 0 {
+		t.Errorf("Expected stale chunk dropped and fresh chunk consumed, but %d chunk(s) remain", audioStream.chunks.Len())
+	}
+}
+
 func sendTestUDPPacket(t *testing.T, url string, stop chan struct{}) {
 	fmt.Println("URL DIAL " + url)
 	conn, err := net.Dial("udp", url)
