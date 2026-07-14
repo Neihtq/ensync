@@ -1,0 +1,5 @@
+# env variabls to set for connecting to navidrome instance
+# file is not read by code
+NAVIDROME_URL
+NAVIDROME_USER
+NAVIDROME_PASSWORD
