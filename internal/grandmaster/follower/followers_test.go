@@ -102,6 +102,24 @@ func TestFollowersRegistry_GetAllFollowers(t *testing.T) {
 	}
 }
 
+func TestFollowersRegistry_IsRegistered(t *testing.T) {
+	registry := NewFollowersRegistry(":65533")
+
+	if registry.IsRegistered("10.0.0.1") {
+		t.Errorf("expected 10.0.0.1 to be unregistered initially")
+	}
+
+	registry.RegisterFollower("10.0.0.1", "8080")
+	if !registry.IsRegistered("10.0.0.1") {
+		t.Errorf("expected 10.0.0.1 to be registered after RegisterFollower")
+	}
+
+	registry.UnsubscribeFollower("10.0.0.1")
+	if registry.IsRegistered("10.0.0.1") {
+		t.Errorf("expected 10.0.0.1 to be unregistered after UnsubscribeFollower")
+	}
+}
+
 func TestFollower_InitConnection(t *testing.T) {
 	// Use a local address for testing
 	f := NewFollower("127.0.0.1:9999")

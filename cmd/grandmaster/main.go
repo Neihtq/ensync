@@ -93,28 +93,31 @@ func readManualPeers(path string) []string {
 	return peers
 }
 
-// subscribeManualPeers subscribes to each configured follower IP directly,
-// bypassing mDNS discovery. It retries in the background until each peer's
-// control plane accepts the subscription, since the follower may not be up yet.
+// subscribeManualPeers keeps each configured follower IP registered, bypassing
+// mDNS discovery. Each peer is watched in its own goroutine that (re)subscribes
+// whenever the follower is absent from the registry — so a follower that drops off
+// and is later evicted gets re-registered once it becomes reachable again.
 func subscribeManualPeers(registry *follower.FollowersRegistry, peers []string, stop chan struct{}) {
 	for _, ip := range peers {
-		url := ip + ":" + followerControlPort + followerEndpoint
-		go func(url string) {
+		go func(ip string) {
+			url := ip + ":" + followerControlPort + followerEndpoint
+			ticker := time.NewTicker(2 * time.Second)
+			defer ticker.Stop()
 			for {
+				if !registry.IsRegistered(ip) {
+					if err := follower.SubscribeFollower(registry, url, ntpPort); err != nil {
+						log("Manual subscribe failed for " + url + ": " + err.Error() + " (retrying)")
+					} else {
+						log("Manually subscribed follower " + url)
+					}
+				}
 				select {
 				case <-stop:
 					return
-				default:
-					if err := follower.SubscribeFollower(registry, url, ntpPort); err != nil {
-						log("Manual subscribe failed for " + url + ": " + err.Error() + " (retrying)")
-						time.Sleep(2 * time.Second)
-						continue
-					}
-					log("Manually subscribed follower " + url)
-					return
+				case <-ticker.C:
 				}
 			}
-		}(url)
+		}(ip)
 	}
 }
 

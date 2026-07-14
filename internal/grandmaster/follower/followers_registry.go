@@ -64,6 +64,16 @@ func (registry *FollowersRegistry) GetAllFollowers() []string {
 	return followerUrls
 }
 
+// IsRegistered reports whether a follower with the given IP address is currently
+// in the registry.
+func (registry *FollowersRegistry) IsRegistered(ipAddress string) bool {
+	registry.Lock()
+	defer registry.Unlock()
+
+	_, exists := registry.Registry[ipAddress]
+	return exists
+}
+
 func (registry *FollowersRegistry) StartHeartbeatService(stop chan struct{}) {
 	addr, err := net.ResolveTCPAddr("tcp", registry.HeartbeatPort)
 	if err != nil {
